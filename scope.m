@@ -373,7 +373,7 @@ classdef scope
                     if( feof(fileID) )
                         error('The end of the file %s was reached whilst still reading the header. This suggests that it is not a Tektronix ISF file.', fileName);
                     end
-                    c = char(fread(fileID, 1, 'char') );
+                    c = char(fread(fileID, 1) );
                     h = [h, c];
                 end
                 
@@ -430,8 +430,8 @@ classdef scope
                 % the Programmer Manual, gives the number of bytes that immediately
                 % follow giving the value 'y', where 'y' is the number of bytes in the
                 % waveform. The manual explains it better than I can.
-                xBytes = str2double(char(fread(fileID, 1, 'char')));
-                yBytes = str2double(char(fread(fileID, xBytes, 'char')));
+                xBytes = str2double(char(fread(fileID, 1)));
+                yBytes = str2double(char(fread(fileID, xBytes)));
                 
                 % For some reason there is an offset of 1 byte in reading the data
                 % files. I don't know why, but I found I could fix it by moving the

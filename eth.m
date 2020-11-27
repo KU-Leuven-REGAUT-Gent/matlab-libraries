@@ -2,7 +2,8 @@
 %  %%                          ETH PACKET CLASS                          %%
 %  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  %                                                                      %
-%  %    Author: Frederic Depuydt                                          %
+%  %    Author: Frederic Depuydt   
+%  %    Adjusted by: Dimitri De Schuyter
 %  %    Company: KU Leuven                                                %
 %  %    Contact: frederic.depuydt@kuleuven.be; f.depuydt@outlook.com      %
 %  %    Version: 1.4                                                      %
@@ -36,6 +37,9 @@
 %  %        ...)                Possible parameters:                      %
 %  %                                  'verbose', 'threshold',             %
 %  %                                  'cut_off_frequency'                 %
+%  %                                                                      %
+%  %      phySignal(            Store physical signals of the packet       %
+%  %        objScope)              Scope object to read                  %
 %  %                                                                      %
 %  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  %        FUNCTIONS (non-static)                                        %
@@ -78,6 +82,7 @@ classdef eth < handle
     end
     properties (Hidden)
         raw
+        phy_signal
         time_end
         ethertype
     end
@@ -1191,6 +1196,12 @@ classdef eth < handle
                     end
                 end
             end
+        end
+        
+        function phySignal(obj,objScope)
+            packetCycles = (objScope.time <= obj.time_end & objScope.time >= obj.time);
+            obj.phy_signal = objScope.value{1}(packetCycles);
+      
         end
     end
     methods (Access = private)

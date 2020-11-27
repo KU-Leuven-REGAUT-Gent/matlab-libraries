@@ -10,3 +10,4 @@ clear funcdirectory;
 
 global rootdirectory;
 cd(rootdirectory);
+clear librarydirectory rootdirectory
