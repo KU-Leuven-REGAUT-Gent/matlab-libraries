@@ -5,6 +5,7 @@
 
 # Exclude Debug and testing folders and files
 debug/*
+examples/*
 
 # Compiled source #
 ###################

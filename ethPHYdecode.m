@@ -34,6 +34,9 @@ classdef ethPHYdecode
                                     case 'threshold'
                                         threshold = varargin{2};
                                         varargin(1:2) = [];
+                                    case 'channelnr'
+                                        chNr = varargin{2};
+                                        varargin(1:2) = [];
                                     case 'cut_off_frequency'
                                         cut_off_frequency = varargin{2};
                                         varargin(1:2) = [];
@@ -56,7 +59,7 @@ classdef ethPHYdecode
             
             %try
             if(verbose);disp(['Starting ETH decoding:']);tic;end;
-            [X,Y] = obj.mlt(objScope,'threshold',threshold,'cut_off_frequency',cut_off_frequency,'verbose',verbose-(verbose>0));
+            [X,Y] = obj.mlt(objScope,'channelnr',chNr,'threshold',threshold,'cut_off_frequency',cut_off_frequency,'verbose',verbose-(verbose>0));
             if(verbose);disp([' 1) MLT-decoding took ' mat2str(round(toc,3)) ' seconds.']);tic;end;
             [Y] = obj.descrambler(Y,verbose-(verbose>0));
             if(verbose);disp([' 2) Descrambling took ' mat2str(round(toc,3)) ' seconds.']);tic;end;
@@ -67,6 +70,7 @@ classdef ethPHYdecode
             if(verbose);disp('ETH decoding finished succesfull.');end;
             obj.time = X;
             obj.value = Y;
+            
             % catch ex % exception
             %     if strcmp(ex.identifier,'mlt:sampleRateToLow')
             %         warning off backtrace
@@ -132,6 +136,9 @@ classdef ethPHYdecode
                                     case 'verbose'
                                         verbose = varargin{2};
                                         varargin(1:2) = [];
+                                    case 'channelnr'
+                                        chNr = varargin{2};
+                                        varargin(1:2) = [];
                                     case 'threshold'
                                         threshold = varargin{2};
                                         varargin(1:2) = [];
@@ -162,7 +169,11 @@ classdef ethPHYdecode
             end
             %% INTERPOLATE TILL 1GHZ SAMPLE RATE
             X = objScope.time;
-            Y = objScope.value{1};
+            if isprop(objScope,"value")
+                Y = objScope.value(chNr);
+            else
+                Y = objScope.channels(chNr).value;
+            end
             Scale = 1;
             Freq = 8e-9;
             while objScope.sample_interval > 1e-9
@@ -240,12 +251,7 @@ classdef ethPHYdecode
 %                 xlabel('f (Hz)');
 %                 ylabel('|P2(f)|');
 %                 axis(ax);
-%                 hold off;
-                
-                
-                
-                
-                
+%                 hold off;    
             end
             clear F Forig Yorig Scale filterfreq;
             
@@ -254,7 +260,12 @@ classdef ethPHYdecode
                 figure;
                 subplot(4,1,1);
                 XT = objScope.time;
-                YT = objScope.value{1};
+                
+                if isprop(objScope,"value")
+                    YT = objScope.value{chNr};
+                else
+                    YT = objScope.channels(chNr).value;
+                end
                 hold on;
                 plot(XT(Xmin<XT & XT<Xmax),YT(Xmin<XT & XT<Xmax), 'color', [0.5 0.5 0.5]);
                 plot(X(plotMin:plotMax),Y(plotMin:plotMax),'r');
@@ -262,7 +273,12 @@ classdef ethPHYdecode
                 hold off;
             end
             objScope.time = X;
-            objScope.value{1} = Y;
+            
+            if isprop(objScope,"value")
+                objScope.value{chNr} = Y;
+            else
+                objScope.channels(chNr).value = Y;
+            end
             
             %% DETECTING FALLING AND RISING EDGES
             X = X + objScope.sample_interval/2;
@@ -389,7 +405,7 @@ classdef ethPHYdecode
                 subplot(4,1,4);
                 hold on;
                 X = objScope.time;
-                Y = objScope.value{1};
+                Y = objScope.value{chNr};
                 plot(X(plotMin:plotMax),Y(plotMin:plotMax),'r');
                 stem(Vx(Xmax>Vx & Vx>Xmin),Vy(Xmax>Vx & Vx>Xmin),'b');
                 axis([Xmin,Xmax,Ymin,Ymax]);

@@ -617,6 +617,10 @@ classdef eth < handle
                                     varargin(i*2-1)=fields(i);
                                     varargin{i*2}=var.(char(fields(1)));
                                 end
+                            elseif isa(varargin{1}, 'double') && ~exist('chNr')
+                                chNr =varargin{1}; 
+                                verbose = varargin{2};
+                                varargin(1:2) = [];    
                             elseif(ischar(varargin{1}))
                                 switch lower(varargin{1})
                                     case 'verbose'
@@ -645,7 +649,7 @@ classdef eth < handle
             if(~exist('threshold','var'));threshold=0.5;end
             if(~exist('cut_off_frequency','var'));cut_off_frequency=2*125e6;end
             
-            objPHY = ethPHYdecode(objScope,'threshold',threshold,'cut_off_frequency',cut_off_frequency,'verbose',verbose-(verbose>0));
+            objPHY = ethPHYdecode(objScope,'channelnr',chNr,'threshold',threshold,'cut_off_frequency',cut_off_frequency,'verbose',verbose-(verbose>0));
             
             X = objPHY.time;
             Y = objPHY.value;
