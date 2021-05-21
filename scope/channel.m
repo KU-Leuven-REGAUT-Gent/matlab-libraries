@@ -25,8 +25,7 @@ classdef channel < dynamicprops
             obj.pn = eth.empty(1,0);
             obj.pn = eth.scoperead(scope,i,1);
         end
-        
-    end
+end
     methods (Static)
         function obj = isfreadSignal(scopeObj,fileName,fileID,h)
                 BYT_N = str2double(regexp(h, 'BYT_NR?\s+"*(.*?)"*[;:]', 'once', 'tokens'));

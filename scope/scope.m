@@ -51,12 +51,20 @@
 %  %        channels,              array of channels to plot
 %  %        titles,                     array of subtitles Standard CHx - title e.g. ["test";"test2"]
 %  %        xlimit                    array with start point and end point of x axis
+%  %        "save"                    when the string save is detected the next attribute  (if it's a string) will be
+%  %                                        the filename of the stored figures with _channels after it.
+%  %                                        Otherwise the filename of the scope will be used. 
+%  %            e.g     s.plotChannels([2:3], 'save','test',["title for channel 2"; "title for channel 3"])
 %  %                    %
 %  %    plotMath(                 plot the scope signals      
 %  %        channels,              array of channels to plot
 %  %        titles,                     array of subtitles Standard CHx - title  e.g. ["test";"test2"]
 %  %        xlimit                    array with start point and end point of x axis
-%  %                    %
+%  %        "save"                    when the string save is detected the next attribute  (if it's a string) will be
+%  %                                        the filename of the stored figures with _math after it.
+%  %                                        Otherwise the filename of the scope will be used. 
+%  %            e.g     s.plotMath([2:3], 'save','test',["title for channel 2"; "title for channel 3"])
+%  %                   png and fig are saved
 %  %                                                                      %
 %  %    split(                  Splitting 1 scope object into 2 (a and b) %
 %  %        channels_a,             Array of strings refering to channels %
@@ -320,6 +328,30 @@ classdef scope < dynamicprops
                     chSize=numel(obj.math);
                      titles =[]; 
             elseif nargin >1
+                % if varargin contains "save"  enable plot saving and
+                % extract  the save name and delete the variables out of
+                % varargin
+                
+                %Exclude the title to find save string otherwise an error
+                %inside the cellfun
+                sizeRowVarargin = cellfun(@(c) size( c,1), varargin, 'UniformOutput', false);
+                saveIndex= find(cellfun(@(x)~isempty(strfind("save",x)), varargin( [sizeRowVarargin{:}]==1)));
+                   
+                    if saveIndex > 0
+                        % Take string or char after the save string as
+                        % filename for the saved figures
+                        if isa(varargin{saveIndex+1},'string') || isa(varargin{saveIndex+1},'char')
+                            saveTitle = strcat(varargin{saveIndex+1},'_channels');
+                            varargin(saveIndex+1) = [];
+                        else % take filename of scope as filename for the figures
+                            saveTitle = strcat(obj.fileName,'_channels');
+                        end
+                        varargin(saveIndex) = [];
+                        savePlot = true;
+                    else 
+                        savePlot = false;
+                    end
+                    
                  ch = varargin{1};
                   if isempty(ch)
                         % create ch array starting from the first channel
@@ -329,7 +361,7 @@ classdef scope < dynamicprops
                  chSize=numel(ch);
                  titles = [];
                  % (title or x limits) argument
-                 if nargin >=3
+                 if numel(varargin) >=2
                      if isa( varargin{2},'double')
                          xLimits = varargin{2};
                          titles = [];
@@ -338,13 +370,15 @@ classdef scope < dynamicprops
                      end
                  end
               % (title or x limits) argument
-                    if nargin >=4
+                    if numel(varargin) >=3
                       if isa( varargin{3},'double')
                         xLimits = varargin{3};
                     else
                         titles = varargin{3};
                     end
                     end       
+                    
+                 
             end
             
             chScope= figure('name',['scope plot measurement ' obj.fileName ]);
@@ -373,7 +407,7 @@ classdef scope < dynamicprops
                         ylabel(yText)
                           
                          if i<=numel(titles)
-                            title(obj.channels(j).name + " - " +  titles(i));
+                            title(obj.channels(j).name + " - " +  titles(i,:));
                          else
                              title(obj.channels(j).name);
                          end
@@ -391,7 +425,16 @@ classdef scope < dynamicprops
             end
             xlabel(["time ["+ obj.horizontal_units + "]"]);
             linkaxes(subplotArray,'x');
-
+            %------- save plot ---------
+            if savePlot    
+                D = pwd;
+                if ~exist([D '\matlab'], 'dir')
+                    mkdir([D '\matlab'])
+                end
+                
+                    print(chScope,'-dpng',fullfile(D,'matlab', saveTitle),'-r400');
+                    saveas(chScope,fullfile(D,'matlab', strcat(saveTitle, ".fig"))); 
+            end
         end
         
          function plotMath(obj,varargin)
@@ -409,6 +452,31 @@ classdef scope < dynamicprops
                     chSize=numel(obj.math);
                      titles =[]; 
             elseif nargin >1
+                                % if varargin contains "save"  enable plot saving and
+                % extract  the save name and delete the variables out of
+                % varargin
+                
+                %Exclude the title to find save string otherwise an error
+                %inside the cellfun
+                sizeRowVarargin = cellfun(@(c) size( c,1), varargin, 'UniformOutput', false);
+                saveIndex= find(cellfun(@(x)~isempty(strfind("save",x)), varargin( [sizeRowVarargin{:}]==1)));
+                   
+                    if saveIndex > 0
+                        % Take string or char after the save string as
+                        % filename for the saved figures
+                        if isa(varargin{saveIndex+1},'string') || isa(varargin{saveIndex+1},'char')
+                            saveTitle = strcat(varargin{saveIndex+1},'_math');
+                            varargin(saveIndex+1) = [];
+                        else % take filename of scope as filename for the figures
+                            saveTitle = strcat(obj.fileName,'_math');
+                        end
+                        varargin(saveIndex) = [];
+                        savePlot = true;
+                    else 
+                        savePlot = false;
+                    end
+                    
+                
                  ch = varargin{1};
                   if isempty(ch)
                         % create ch array starting from the first channel
@@ -418,7 +486,7 @@ classdef scope < dynamicprops
                  chSize=numel(ch);
                  titles = [];
                  % (title or x limits) argument
-                 if nargin >=3
+                 if numel(varargin) >=2
                      if isa( varargin{2},'double')
                          xLimits = varargin{2};
                          titles = [];
@@ -427,7 +495,7 @@ classdef scope < dynamicprops
                      end
                  end
               % (title or x limits) argument
-                    if nargin >=4
+                    if numel(varargin) >=3
                       if isa( varargin{3},'double')
                         xLimits = varargin{3};
                     else
@@ -461,8 +529,7 @@ classdef scope < dynamicprops
                         plot(obj.math(j).time,obj.math(j).channel.value,'LineWidth',2)
                                             
                        ylabel(yText)
-                       
-                        
+                                               
                         if i<=numel(titles)
                             title(obj.math(j).channel.name + " - " +  titles(i));              
                         else
@@ -492,16 +559,24 @@ classdef scope < dynamicprops
                             xlim([obj.math(j).time(1), obj.math(j).time(end)]);
                          end
                          s=s+1;
-                        break;
-                        
-                        
+                        break;                                               
                     end
                 end
+                
             end
                 
      
             linkaxes(subplotArray,'x');
-            
+                        %------- save plot ---------
+            if savePlot    
+                D = pwd;
+                if ~exist([D '\matlab'], 'dir')
+                    mkdir([D '\matlab'])
+                end
+                
+                    print(mathScope,'-dpng',fullfile(D,'matlab', saveTitle),'-r400');
+                    saveas(mathScope,fullfile(D,'matlab', strcat(saveTitle, ".fig"))); 
+            end
          end
         
         % ----------------------- PROFINET decode function ----------------------------
@@ -700,7 +775,7 @@ classdef scope < dynamicprops
         function Y = getValues(obj,channel)
             if(~exist('channel','var'));error('No channel selected');end;
             if(isnumeric(channel))
-                Y = obj.channels{channel}.value;
+                Y = obj.channels(channel).value;
             else
                 Y = obj.channels(channel).value;
             end
@@ -956,8 +1031,8 @@ classdef scope < dynamicprops
                 fileIDs=~cellfun('isempty',regexp(fileNames,fName));
                 fileNames= fileNames(fileIDs);
                 
-                 chNames = fileNames(~cellfun('isempty',(regexpi(fileNames,'CH'))))
-                 mthNames = fileNames(~cellfun('isempty',(regexpi(fileNames,'MaTH'))))
+                 chNames = fileNames(~cellfun('isempty',(regexpi(fileNames,'CH'))));
+                 mthNames = fileNames(~cellfun('isempty',(regexpi(fileNames,'MaTH'))));
                  
                  obj.fileName = fName{1};
             end         
