@@ -331,7 +331,6 @@ classdef scope < dynamicprops
                 % if varargin contains "save"  enable plot saving and
                 % extract  the save name and delete the variables out of
                 % varargin
-                
                 %Exclude the title to find save string otherwise an error
                 %inside the cellfun
                 sizeRowVarargin = cellfun(@(c) size( c,1), varargin, 'UniformOutput', false);
