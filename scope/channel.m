@@ -1,4 +1,4 @@
-classdef channel < dynamicprops
+classdef channel < dynamicprops & matlab.mixin.Copyable
     properties
         name, ...
 %             filter_frequency, ...
@@ -18,14 +18,17 @@ classdef channel < dynamicprops
             obj.name = name;
         end
         
-        function obj = decodeChannelPN(obj,scope,i)
+        function obj = decodeChannelPN(obj,s,i)
             if   ~isprop(obj,'pn')
                 obj.addprop('pn');
             end
             obj.pn = eth.empty(1,0);
-            obj.pn = eth.scoperead(scope,i,1);
+           scopeTemp =  copy(s);
+%            scopeTemp = scopeTemp.copy(s);
+            obj.pn = eth.scoperead(scopeTemp,i,1);
         end
-end
+    end
+  
     methods (Static)
         function obj = isfreadSignal(scopeObj,fileName,fileID,h)
                 BYT_N = str2double(regexp(h, 'BYT_NR?\s+"*(.*?)"*[;:]', 'once', 'tokens'));

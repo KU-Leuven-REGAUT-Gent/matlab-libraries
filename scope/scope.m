@@ -111,7 +111,7 @@
 %  %                                                                      %
 %  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-classdef scope < dynamicprops
+classdef scope < dynamicprops & matlab.mixin.Copyable
     properties
         model, ...
             fileName,...
@@ -333,13 +333,16 @@ classdef scope < dynamicprops
                 % varargin
                 %Exclude the title to find save string otherwise an error
                 %inside the cellfun
-                sizeRowVarargin = cellfun(@(c) size( c,1), varargin, 'UniformOutput', false);
-                saveIndex= find(cellfun(@(x)~isempty(strfind("save",x)), varargin( [sizeRowVarargin{:}]==1)));
-                   
+               
+                
+                varCharID = cellfun(@(x) isa(x,'char'), varargin);
+                FirstCharID = find(varCharID,1,'first')
+                saveIndex=FirstCharID + find(cellfun(@(x)~isempty(strfind("save",x)), varargin( varCharID)))-1;
+               
                     if saveIndex > 0
                         % Take string or char after the save string as
                         % filename for the saved figures
-                        if isa(varargin{saveIndex+1},'string') || isa(varargin{saveIndex+1},'char')
+                        if numel(varargin) >= (saveIndex+1) &&(  isa(varargin{saveIndex+1},'string') || isa(varargin{saveIndex+1},'char'))
                             saveTitle = strcat(varargin{saveIndex+1},'_channels');
                             varargin(saveIndex+1) = [];
                         else % take filename of scope as filename for the figures
@@ -395,7 +398,6 @@ classdef scope < dynamicprops
                         switch obj.channels(j).vertical_unit 
                             case 'V'
                                 yText = ["Voltage [" + obj.channels(j).vertical_unit  + "]"] ;
-                                xText = ["frequency ["+ obj.math(j).horizontal_units + "]"];
                             case 'A'
                                  yText = ["Current [" + obj.channels(j).vertical_unit  + "]"] ;
                         end
@@ -406,7 +408,7 @@ classdef scope < dynamicprops
                         ylabel(yText)
                           
                          if i<=numel(titles)
-                            title(obj.channels(j).name + " - " +  titles(i,:));
+                            title(obj.channels(j).name + " - " +  titles(i));
                          else
                              title(obj.channels(j).name);
                          end
@@ -530,7 +532,7 @@ classdef scope < dynamicprops
                        ylabel(yText)
                                                
                         if i<=numel(titles)
-                            title(obj.math(j).channel.name + " - " +  titles(i));              
+                            title(obj.math(j).channel.name + " - " +  titles(i,:));              
                         else
                             title(obj.math(j).channel.name);
                         end
@@ -577,6 +579,11 @@ classdef scope < dynamicprops
                     saveas(mathScope,fullfile(D,'matlab', strcat(saveTitle, ".fig"))); 
             end
          end
+         
+%          function obj = copy(obj,parent)
+%              obj = parent;
+%          end
+         
         
         % ----------------------- PROFINET decode function ----------------------------
      function obj = decodePN(obj,varargin)
@@ -593,7 +600,7 @@ classdef scope < dynamicprops
               for j=1: length(obj.channels)
                   if contains(obj.channels(j).name,string(ch(i)))
         %              obj.pn.(obj.channels(j).name)  = eth.scoperead(obj,j,verbose);
-                      obj.channels(j) = obj.channels(j).decodeChannelPN(obj,j)
+                      obj.channels(j) = obj.channels(j).decodeChannelPN(obj,j);
                   end
               end
           end
@@ -791,20 +798,26 @@ classdef scope < dynamicprops
             end
         end
     end
-    
+    methods (Access = protected)
+        function thiscopy = copyElement(this)
+            thiscopy = copyElement@matlab.mixin.Copyable(this); %shallow copy of all elements
+            thiscopy.channels = copy(this.channels); %Deep copy of channels
+        end
+    end
     methods (Static)
-        function obj = isfread(file, verbose)
+        function obj = isfread(file, verbose,varargin)
             if(~exist('verbose','var'));verbose=-1;warn('All underlying functions are executed in verbose mode');end;
             if ~exist('file', 'var')
                 error('No file name, directory or pattern was specified.');
             end
-            
+            sizeRowVarargin = cellfun(@(c) size( c,1), varargin, 'UniformOutput', false);
+             appIndex= find(cellfun(@(x)~isempty(strfind("app",x)), varargin( [sizeRowVarargin{:}]==1)));
             % Check whether file is a folder.
-            if( exist(file, 'dir') )
+            if (isa(file, 'char' ) && exist(file, 'dir') )
                 folder = file;
                 % Get a list of all files that have the extension '.isf' or '.ISF'.
                 files = [ dir(fullfile(folder, '*.isf')) ];
-            else
+           elseif appIndex==0
                 % The pattern is not a folder, so must be a file name or a pattern with
                 % wildcards (such as 'Traces/TEK0*.ISF').
                 [folder, ~, ~] = fileparts(file);
@@ -813,13 +826,21 @@ classdef scope < dynamicprops
                 % ...then exclude the folders, to get just a list of files.
                 files = filesAndFolders(~[filesAndFolders.isdir]);
             end
-            
-            fileNames = {files.name};
-            datetimes = datestr([files.datenum]);
+            if isempty(appIndex) || appIndex==0
+                fileNames = {files.name};
+                datetimes = datestr([files.datenum]);
+            end
             obj = scope('Unknown (ISF)');
             obj.firmware_version = 'Unknown (ISF)';
-            
-            if numel(fileNames)==0
+            if appIndex>0
+               folder = varargin{appIndex +1};
+                
+                
+                   chNames = file(~cellfun('isempty',(regexpi(file,'CH'))));
+                 mthNames = file(~cellfun('isempty',(regexpi(file,'Math'))));
+                 
+                 obj.fileName = extractBefore(file{1},'CH');
+            elseif numel(fileNames)==0
                 error('The pattern did not match any file or files: %s', file);
             elseif numel(fileNames) >1 &&  contains(input('Extract one measurement: ','s'),["y","Y","yes","j","ja"]) 
                 fileInDir(:,2) = fileNames';
@@ -991,19 +1012,20 @@ classdef scope < dynamicprops
             end
         end
       
-        function obj = wfmread(file, verbose)
+        function obj = wfmread(file, verbose,varargin)
             if(~exist('verbose','var'));verbose=-1;warn('All underlying functions are executed in verbose mode');end;
             if ~exist('file', 'var')
                 error('No file name, directory or pattern was specified.');
             end
-            
+             sizeRowVarargin = cellfun(@(c) size( c,1), varargin, 'UniformOutput', false);
+             appIndex= find(cellfun(@(x)~isempty(strfind("app",x)), varargin( [sizeRowVarargin{:}]==1)));
             % Check whether file is a folder.
-            if( exist(file, 'dir') )
+            if(isa(file, 'char' ) && exist(file, 'dir') )
                 folder = file;
                 % Get a list of all files that have the extension '.wfm' or '.WFM'.
                 files = [ dir(fullfile(folder, '*.wfm')) ];
                 
-            else
+            elseif appIndex==0
                 % The pattern is not a folder, so must be a file name or a pattern with
                 % wildcards (such as 'Traces/TEK0*.ISF').
                 [folder, ~, ~] = fileparts(file);
@@ -1012,15 +1034,23 @@ classdef scope < dynamicprops
                 % ...then exclude the folders, to get just a list of files.
                 files = filesAndFolders(~[filesAndFolders.isdir]);
             end
-            
+            if isempty(appIndex) || appIndex==0
             fileNames = {files.name};
             datetimes = datestr([files.datenum]);
-            
+            end
              obj = scope('Unknown (WFM)');
             obj.firmware_version = 'Unknown (WFM)';
             
-            if numel(fileNames)==0
-                error('The pattern did not match any file or files: %s', file);
+            if appIndex>0
+               folder = varargin{appIndex +1};
+                
+                
+                   chNames = file(~cellfun('isempty',(regexpi(file,'CH'))));
+                 mthNames = file(~cellfun('isempty',(regexpi(file,'MaTH'))));
+                 
+                 obj.fileName = extractBefore(file{1},'_Ch');
+            elseif numel(fileNames)==0
+                error('The pattern did not match any file or files: %s', file);                 
             elseif numel(fileNames) >1 &&  contains(input('Extract one measurement: ','s'),["y","Y","yes","j","ja"]) 
                 fileInDir(:,2) = fileNames';
                 fileInDir(:,1)= num2cell(1:numel(fileNames))';
