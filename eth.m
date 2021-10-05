@@ -195,8 +195,7 @@ classdef eth < handle
             % Examples: "eth.src == 68:05:ca:1e:84:69 & !udp"
             
             if(~exist('verbose','var'));verbose=-1;warn('All underlying functions are executed in verbose mode');end
-            
-            
+        
             while ~exist('file','var')
                 file = input ('Enter a full filepath.');
             end
