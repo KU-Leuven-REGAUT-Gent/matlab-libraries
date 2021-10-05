@@ -1,5 +1,5 @@
 <deployment-project plugin="plugin.apptool" plugin-version="1.0">
-  <configuration build-checksum="3255476867" file="D:\Users\Dimitri\Documenten\Libraries\MATLAB\matlab-libraries\scope\scope app.prj" location="D:\Users\Dimitri\Documenten\Libraries\MATLAB\matlab-libraries\scope" name="scope app" target="target.mlapps" target-name="Package App">
+  <configuration build-checksum="3593192608" file="D:\Users\Dimitri\Documenten\Libraries\MATLAB\matlab-libraries\scope\scope app.prj" location="D:\Users\Dimitri\Documenten\Libraries\MATLAB\matlab-libraries\scope" name="scope app" target="target.mlapps" target-name="Package App">
     <param.appname>scope app</param.appname>
     <param.authnamewatermark>Dimitri De Schuyter</param.authnamewatermark>
     <param.email />
@@ -9,7 +9,7 @@
     <param.summary />
     <param.description>Added  pn plotting function
 Fix multiple channel profinet decoding</param.description>
-    <param.screenshot>C:\Users\Dimitri De Schuyter\AppData\Local\Temp\tp2d450f60_0b53_48f3_9ea5_8b38b5b8ba5d.png</param.screenshot>
+    <param.screenshot>C:\Users\Dimitri De Schuyter\AppData\Local\Temp\tpee58d609_dc37_4095_b57b_45ef4fa50494.png</param.screenshot>
     <param.version>1.0</param.version>
     <param.products.name />
     <param.products.id />
