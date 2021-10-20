@@ -6,6 +6,7 @@
 # Exclude Debug and testing folders and files
 debug/*
 examples/*
+scope/Old/*
 
 # Compiled source #
 ###################

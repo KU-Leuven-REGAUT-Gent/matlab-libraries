@@ -47,23 +47,23 @@
 %  %        window,              hanning, hamming, blackmanharris, gaussian, rectangle, none is possible  %
 %  %            returns:  [frequency axis, spectrum, window size]                  %
 %  %                                                                      %
-%  %    plotChannels(                 plot the scope signals      
-%  %        channels,              array of channels to plot
-%  %        titles,                     array of subtitles Standard CHx - title e.g. ["test";"test2"]
-%  %        xlimit                    array with start point and end point of x axis
-%  %        "save"                    when the string save is detected the next attribute  (if it's a string) will be
+%  %    plotChannels(                 plot the scope signals
+%  %        'channels', channelArray              array of channels to plot
+%  %        'titles', titleArray                     array of subtitles Standard CHx - title e.g. ["test";"test2"]
+%  %        'limit', xlimitArray                   array with start point and end point of x axis
+%  %        "save"  , saveName                    when the string save is detected the next attribute  (if it's a string) will be
 %  %                                        the filename of the stored figures with _channels after it.
-%  %                                        Otherwise the filename of the scope will be used. 
-%  %            e.g     s.plotChannels([2:3], 'save','test',["title for channel 2"; "title for channel 3"])
+%  %                                        Otherwise the filename of the scope will be used.
+%  %            e.g     s.plotChannels('channesls,[2:3], 'save','test','titles'["title for channel 2"; "title for channel 3"])
 %  %                    %
-%  %    plotMath(                 plot the scope signals      
-%  %        channels,              array of channels to plot
-%  %        titles,                     array of subtitles Standard CHx - title  e.g. ["test";"test2"]
-%  %        xlimit                    array with start point and end point of x axis
-%  %        "save"                    when the string save is detected the next attribute  (if it's a string) will be
+%  %    plotMath(                 plot the scope signals
+%  %        'channels', channelArray              array of channels to plot
+%  %        'titles', titleArray                    array of subtitles Standard CHx - title  e.g. ["test";"test2"]
+%  %        'limit', xlimitArray                    array with start point and end point of x axis
+%  %        "save"  , saveName                  when the string save is detected the next attribute  (if it's a string) will be
 %  %                                        the filename of the stored figures with _math after it.
-%  %                                        Otherwise the filename of the scope will be used. 
-%  %            e.g     s.plotMath([2:3], 'save','test',["title for channel 2"; "title for channel 3"])
+%  %                                        Otherwise the filename of the scope will be used.
+%  %            e.g     s.plotMath('channesls,[2:3], 'save','test','titles'["title for channel 2"; "title for channel 3"])
 %  %                   png and fig are saved
 %  %                                                                      %
 %  %    split(                  Splitting 1 scope object into 2 (a and b) %
@@ -135,7 +135,7 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
             vertical_position, ...
             time, ...
             channels, ...
-  
+            
     end
     methods
         function obj = scope(model)
@@ -166,7 +166,7 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
             sizeData = length(objScope(1).value{1}(t1:t2-1));
             N=sizeData;%2^(nextpow2( sizeData));
             Fs=1/objScope(1).sample_interval;
-
+            
             if sizeData< N
                 data =zeros(1,N);
                 data(1:sizeData)= obj.channels{1}.value(t1:t2-1);
@@ -178,52 +178,52 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
             switch window
                 case 'hanning'
                     %Characteristics:
-                    % -     Better frequency, 
-                    % -     Poorer magnitude accuracy than Rectangular. 
+                    % -     Better frequency,
+                    % -     Poorer magnitude accuracy than Rectangular.
                     % -     Hanning has slightly poorer frequencyresolution than Hamming.
                     % Best for:
                     % -     Sine, periodic, and narrow-band random noise.
                     % -     Transients or bursts where the signal levels before and after the event are significantly different
-                     fftWindow = hanning(N);
+                    fftWindow = hanning(N);
                 case 'hamming'
                     %Characteristics:
-                    % -     Better frequency, , 
+                    % -     Better frequency, ,
                     % -     poorer magnitude accuracy than Rectangular
                     % -     THamming has slightly better frequencyresolution than Hanning
                     % Best for:
                     % -     Sine, periodic, and narrow-band random noise
                     % -     Transients or bursts where the signal levels before and after the event are significantly different
-                     fftWindow = hamming(N);
+                    fftWindow = hamming(N);
                 case 'rectangle'
                     %Characteristics:
-                    % -     Best frequency, 
+                    % -     Best frequency,
                     % -     worst magnitude resolution
                     % -     This isessentially the same as no window
                     % Best for:
                     % -     Transients or bursts where the signal levels before and after the event are nearly equal
                     % -     Equal-amplitude sine waves with frequencies that are very close
-                     fftWindow = rectwin(N);             
+                    fftWindow = rectwin(N);
                 case 'blackmanharris'
                     %Characteristics:
-                    % -     worst frequency resolution, 
-                    % -     Best magnitude 
+                    % -     worst frequency resolution,
+                    % -     Best magnitude
                     % -     This isessentially the same as no window
                     % Best for:
                     % -     Predominantly single frequency signals to look forhigher order harmonics
-                     fftWindow = blackmanharris(N);
+                    fftWindow = blackmanharris(N);
                 case 'gaussian'
                     %Characteristics:
-                    % -     worst frequency resolution, 
-                    % -     Best magnitude 
+                    % -     worst frequency resolution,
+                    % -     Best magnitude
                     % -     This isessentially the same as no window
                     % Best for:
                     % -     Predominantly single frequency signals to look forhigher order harmonics
-                     fftWindow = gausswin(N);
+                    fftWindow = gausswin(N);
                 otherwise
                     
             end
             if exist('fftWindow','var')
-               data = data'.*fftWindow;
+                data = data'.*fftWindow;
             else
                 data = data';
             end
@@ -236,9 +236,9 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
             fft_abs= (abs(fft_res/N));
             fft_result=fft_abs(1:N/2+1);
             fft_result(2:end-1) = 2*fft_result(2:end-1);
-             if strcmp(scale, 'db')
-                   fft_result = mag2db(fft_result)- mag2db(levelOffset);
-             end
+            if strcmp(scale, 'db')
+                fft_result = mag2db(fft_result)- mag2db(levelOffset);
+            end
             
         end
         
@@ -249,52 +249,52 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
             switch window
                 case 'hanning'
                     %Characteristics:
-                    % -     Better frequency, 
-                    % -     Poorer magnitude accuracy than Rectangular. 
+                    % -     Better frequency,
+                    % -     Poorer magnitude accuracy than Rectangular.
                     % -     Hanning has slightly poorer frequencyresolution than Hamming.
                     % Best for:
                     % -     Sine, periodic, and narrow-band random noise.
                     % -     Transients or bursts where the signal levels before and after the event are significantly different
-                     fftWindow = hanning(N);
+                    fftWindow = hanning(N);
                 case 'hamming'
                     %Characteristics:
-                    % -     Better frequency, , 
+                    % -     Better frequency, ,
                     % -     poorer magnitude accuracy than Rectangular
                     % -     THamming has slightly better frequencyresolution than Hanning
                     % Best for:
                     % -     Sine, periodic, and narrow-band random noise
                     % -     Transients or bursts where the signal levels before and after the event are significantly different
-                     fftWindow = hamming(N);
+                    fftWindow = hamming(N);
                 case 'rectangle'
                     %Characteristics:
-                    % -     Best frequency, 
+                    % -     Best frequency,
                     % -     worst magnitude resolution
                     % -     This isessentially the same as no window
                     % Best for:
                     % -     Transients or bursts where the signal levels before and after the event are nearly equal
                     % -     Equal-amplitude sine waves with frequencies that are very close
-                     fftWindow = rectwin(N);             
+                    fftWindow = rectwin(N);
                 case 'blackmanharris'
                     %Characteristics:
-                    % -     worst frequency resolution, 
-                    % -     Best magnitude 
+                    % -     worst frequency resolution,
+                    % -     Best magnitude
                     % -     This isessentially the same as no window
                     % Best for:
                     % -     Predominantly single frequency signals to look forhigher order harmonics
-                     fftWindow = blackmanharris(N);
+                    fftWindow = blackmanharris(N);
                 case 'gaussian'
                     %Characteristics:
-                    % -     worst frequency resolution, 
-                    % -     Best magnitude 
+                    % -     worst frequency resolution,
+                    % -     Best magnitude
                     % -     This isessentially the same as no window
                     % Best for:
                     % -     Predominantly single frequency signals to look forhigher order harmonics
-                     fftWindow = gausswin(N);
+                    fftWindow = gausswin(N);
                 otherwise
                     
             end
             if exist('fftWindow','var')
-               data = data'.*fftWindow;
+                data = data'.*fftWindow;
             else
                 data = data';
             end
@@ -307,82 +307,26 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
             fft_abs= (abs(fft_res/N));
             fft_result=fft_abs(1:N/2+1);
             fft_result(2:end-1) = 2*fft_result(2:end-1);
-             if strcmp(scale, 'db')
-                   fft_result = mag2db(fft_result);
-             end
+            if strcmp(scale, 'db')
+                fft_result = mag2db(fft_result);
+            end
             
         end
         % ----------------------- plot function ----------------------------
+        
         function plotChannels(obj,varargin)
             % input arguments
             % 1 - single value or array of channels that needs to be
             % plotted
             % 2 - title array ( default CHx)
-            % 3 - y label array (default Voltage [V]            
+            % 3 - y label array (default Voltage [V]
             %------------------------------------------------------
             
             % Declaration and initialisation of the titles, ylabels and
             % channels variables
-            if nargin <=1
-                ch = str2double(extractAfter(upper(obj.channels(1).name),'CH')):str2double(extractAfter(upper(obj.channels(end).name),'CH'));
-                    chSize=numel(obj.math);
-                     titles =[]; 
-            elseif nargin >1
-                % if varargin contains "save"  enable plot saving and
-                % extract  the save name and delete the variables out of
-                % varargin
-                %Exclude the title to find save string otherwise an error
-                %inside the cellfun
-               
-                
-                varCharID = cellfun(@(x) isa(x,'char'), varargin);
-                FirstCharID = find(varCharID,1,'first')
-                saveIndex=FirstCharID + find(cellfun(@(x)~isempty(strfind("save",x)), varargin( varCharID)))-1;
-               
-                    if saveIndex > 0
-                        % Take string or char after the save string as
-                        % filename for the saved figures
-                        if numel(varargin) >= (saveIndex+1) &&(  isa(varargin{saveIndex+1},'string') || isa(varargin{saveIndex+1},'char'))
-                            saveTitle = strcat(varargin{saveIndex+1},'_channels');
-                            varargin(saveIndex+1) = [];
-                        else % take filename of scope as filename for the figures
-                            saveTitle = strcat(obj.fileName,'_channels');
-                        end
-                        varargin(saveIndex) = [];
-                        savePlot = true;
-                    else 
-                        savePlot = false;
-                    end
-                    
-                 ch = varargin{1};
-                  if isempty(ch)
-                        % create ch array starting from the first channel
-                        % measured to the last.
-                        ch = str2double(extractAfter(upper(obj.channels(1).name),'CH')):str2double(extractAfter(upper(obj.channels(end).name),'CH'));
-                  end
-                 chSize=numel(ch);
-                 titles = [];
-                 % (title or x limits) argument
-                 if numel(varargin) >=2
-                     if isa( varargin{2},'double')
-                         xLimits = varargin{2};
-                         titles = [];
-                     else
-                         titles = varargin{2};
-                     end
-                 end
-              % (title or x limits) argument
-                    if numel(varargin) >=3
-                      if isa( varargin{3},'double')
-                        xLimits = varargin{3};
-                    else
-                        titles = varargin{3};
-                    end
-                    end       
-                    
-                 
-            end
-            
+            [ch, xLimits, savePlot, saveName, titles] = scope.splitVarargin(varargin);
+            saveName = strcat(saveName,'_channels');
+            chSize = numel(ch);
             chScope= figure('name',['scope plot measurement ' obj.fileName ]);
             fontSize = 20;
             set(gca,'fontsize',fontSize+2) % set fontsize of the plot to 20
@@ -390,121 +334,68 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
             set(0, 'DefaultAxesFontSize', fontSize);
             subplotArray=[];
             
-            s=1;       
-             for i=1:numel(ch)
-               for  j =1:numel(obj.channels) 
+            s=1;
+            for i=1:numel(ch)
+                for  j =1:numel(obj.channels)
                     if contains(obj.channels(j).name,string(ch(i)))
                         % declaration ylabel
-                        switch obj.channels(j).vertical_unit 
+                        switch obj.channels(j).vertical_unit
                             case 'V'
                                 yText = ["Voltage [" + obj.channels(j).vertical_unit  + "]"] ;
                             case 'A'
-                                 yText = ["Current [" + obj.channels(j).vertical_unit  + "]"] ;
+                                yText = ["Current [" + obj.channels(j).vertical_unit  + "]"] ;
                         end
                         
                         subplotArray(s) =subplot(chSize,1,s);
                         plot(obj.time,obj.channels(j).value,'LineWidth',2,'Color',pltColor(ch(i)))
                         
                         ylabel(yText)
-                          
-                         if i<=numel(titles)
+                        
+                        if i<=numel(titles) && titles(i) ~= ""
                             title(obj.channels(j).name + " - " +  titles(i));
-                         else
-                             title(obj.channels(j).name);
-                         end
-                         
-                         if exist('xLimits')
-                             xlim(xLimits);
-                         else
+                        else
+                            title(obj.channels(j).name);
+                        end
+                        
+                        if ~isempty(xLimits)
+                            xlim(xLimits);
+                        else
                             xlim([obj.time(1), obj.time(end)]);
-                         end
-                         
-                         s=s+1;                       
-                        break;                        
-                    end                   
+                        end
+                        
+                        s=s+1;
+                        break;
+                    end
                 end
             end
             xlabel(["time ["+ obj.horizontal_units + "]"]);
             linkaxes(subplotArray,'x');
             %------- save plot ---------
-            if savePlot    
+            if savePlot
                 D = pwd;
                 if ~exist([D '\matlab'], 'dir')
                     mkdir([D '\matlab'])
                 end
                 
-                    print(chScope,'-dpng',fullfile(D,'matlab', saveTitle),'-r400');
-                    saveas(chScope,fullfile(D,'matlab', strcat(saveTitle, ".fig"))); 
+                print(chScope,'-dpng',fullfile(D,'matlab', saveName),'-r400');
+                saveas(chScope,fullfile(D,'matlab', strcat(saveName, ".fig")));
             end
         end
         
-         function plotMath(obj,varargin)
+        function plotMath(obj,varargin)
             % input arguments
             % 1 - single value or array of channels that needs to be
             % plotted
             % 2 - title array ( default CHx)
-            % 3 - y label array (default Voltage [V]            
+            % 3 - y label array (default Voltage [V]
             %------------------------------------------------------
             
             % Declaration and initialisation of the titles, ylabels and
             % channels variables
-            if nargin <=1
-                ch = str2double(extractAfter(obj.math(1).channel.name,'Math')):str2double(extractAfter(obj.math(end).channel.name,'Math'));
-                    chSize=numel(obj.math);
-                     titles =[]; 
-            elseif nargin >1
-                                % if varargin contains "save"  enable plot saving and
-                % extract  the save name and delete the variables out of
-                % varargin
-                
-                %Exclude the title to find save string otherwise an error
-                %inside the cellfun
-                sizeRowVarargin = cellfun(@(c) size( c,1), varargin, 'UniformOutput', false);
-                saveIndex= find(cellfun(@(x)~isempty(strfind("save",x)), varargin( [sizeRowVarargin{:}]==1)));
-                   
-                    if saveIndex > 0
-                        % Take string or char after the save string as
-                        % filename for the saved figures
-                        if isa(varargin{saveIndex+1},'string') || isa(varargin{saveIndex+1},'char')
-                            saveTitle = strcat(varargin{saveIndex+1},'_math');
-                            varargin(saveIndex+1) = [];
-                        else % take filename of scope as filename for the figures
-                            saveTitle = strcat(obj.fileName,'_math');
-                        end
-                        varargin(saveIndex) = [];
-                        savePlot = true;
-                    else 
-                        savePlot = false;
-                    end
-                    
-                
-                 ch = varargin{1};
-                  if isempty(ch)
-                        % create ch array starting from the first channel
-                        % measured to the last.
-                        ch = str2double(extractAfter(obj.math(1).channel.name,'Math')):str2double(extractAfter(obj.math(end).channel.name,'Math'));
-                  end
-                 chSize=numel(ch);
-                 titles = [];
-                 % (title or x limits) argument
-                 if numel(varargin) >=2
-                     if isa( varargin{2},'double')
-                         xLimits = varargin{2};
-                         titles = [];
-                     else
-                         titles = varargin{2};
-                     end
-                 end
-              % (title or x limits) argument
-                    if numel(varargin) >=3
-                      if isa( varargin{3},'double')
-                        xLimits = varargin{3};
-                    else
-                        titles = varargin{3};
-                    end
-                    end                 
-            end
-                     
+            [ch, xLimits, savePlot, saveName, titles] = scope.splitVarargin(varargin);
+            saveName = strcat(saveName,'math');
+            chSize = numel(ch);
+            
             mathScope= figure('name',['scope math plot measurement ' obj.fileName ]);
             fontSize = 20;
             set(gca,'fontsize',fontSize+2) % set fontsize of the plot to 20
@@ -512,7 +403,7 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
             set(0, 'DefaultAxesFontSize', fontSize);
             subplotArray=[];
             
-            s=1;                    
+            s=1;
             for i=1:numel(ch)
                 for  j =1:numel(obj.channels)
                     if contains(obj.channels(j).name,string(ch(i)))
@@ -528,84 +419,81 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
                         
                         subplotArray(s) =subplot(chSize,1,s);
                         plot(obj.math(j).time,obj.math(j).channel.value,'LineWidth',2)
-                                            
-                       ylabel(yText)
-                                               
-                        if i<=numel(titles)
-                            title(obj.math(j).channel.name + " - " +  titles(i,:));              
+                        
+                        ylabel(yText)
+                        
+                        if i<=numel(titles) && titles(i) ~= ""
+                            title(obj.math(j).channel.name + " - " +  titles(i,:));
                         else
                             title(obj.math(j).channel.name);
                         end
-
-                         if numel(ch) >1
-                             
+                        
+                        if numel(ch) >1
+                            
                             for  c=1:numel(ch)
-                               Hunits(c,:) =  obj.math(c).horizontal_units;
+                                Hunits(c,:) =  obj.math(c).horizontal_units;
                             end
                             % show only the xlabel on the lowest subplot
-                           if sum(contains(cellstr(Hunits),Hunits(1,:)))==numel(ch) 
-                              if j == numel(ch) % show xlabel on last plot
+                            if sum(contains(cellstr(Hunits),Hunits(1,:)))==numel(ch)
+                                if j == numel(ch) % show xlabel on last plot
                                     xlabel(xText)
-                              end
-                           else % show ylabel on each subplot when they differs
-                               xlabel(xText)
-                           end
-                         else % only one plot
+                                end
+                            else % show ylabel on each subplot when they differs
+                                xlabel(xText)
+                            end
+                        else % only one plot
                             xlabel(xText)
-                         end
-                         
-                         if exist('xLimits')
-                             xlim(xLimits);
-                         else
+                        end
+                        
+                        if ~isempty(xLimits)
+                            xlim(xLimits);
+                        else
                             xlim([obj.math(j).time(1), obj.math(j).time(end)]);
-                         end
-                         s=s+1;
-                        break;                                               
+                        end
+                        s=s+1;
+                        break;
                     end
                 end
-                
             end
-                
-     
             linkaxes(subplotArray,'x');
-                        %------- save plot ---------
-            if savePlot    
+            %------- save plot ---------
+            if savePlot
                 D = pwd;
                 if ~exist([D '\matlab'], 'dir')
                     mkdir([D '\matlab'])
                 end
                 
-                    print(mathScope,'-dpng',fullfile(D,'matlab', saveTitle),'-r400');
-                    saveas(mathScope,fullfile(D,'matlab', strcat(saveTitle, ".fig"))); 
+                print(mathScope,'-dpng',fullfile(D,'matlab', saveName),'-r400');
+                saveas(mathScope,fullfile(D,'matlab', strcat(saveName, ".fig")));
             end
-         end
-         
-%          function obj = copy(obj,parent)
-%              obj = parent;
-%          end
-         
+        end
+        
+        %          function obj = copy(obj,parent)
+        %              obj = parent;
+        %          end
+        
         
         % ----------------------- PROFINET decode function ----------------------------
-     function obj = decodePN(obj,varargin)
-         % Declaration and initialisation of channels
+        function obj = decodePN(obj,varargin)
+            % Declaration and initialisation of channels
             switch nargin
-               case 1              
-                    ch = 1:4;   
-               case 2
+                case 1
+                    ch = 1:4;
+                case 2
                     ch = varargin{1};
             end
-          verbose = 0;
-          % decode the signals in the same order as the ch array.
-          for i =1:numel(ch) 
-              for j=1: length(obj.channels)
-                  if contains(obj.channels(j).name,string(ch(i)))
-        %              obj.pn.(obj.channels(j).name)  = eth.scoperead(obj,j,verbose);
-                      obj.channels(j) = obj.channels(j).decodeChannelPN(obj,j);
-                  end
-              end
-          end
-    end
-            
+            verbose = 0;
+            % decode the signals in the same order as the ch array.
+            for i =1:numel(ch)
+                for j=1: length(obj.channels)
+                    if contains(obj.channels(j).name,string(ch(i)))
+                        %              obj.pn.(obj.channels(j).name)  = eth.scoperead(obj,j,verbose);
+                        obj.channels(j) = obj.channels(j).decodeChannelPN(obj,j);
+                    end
+                end
+            end
+        end
+        
         function [obj1,obj2] = split(obj,channels1,channels2)
             obj1 = obj;
             obj2 = obj;
@@ -709,6 +597,7 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
                 axis(ax);
             end
         end
+        
         function Y = bandstop(obj,X,freq,verbose)
             if(~exist('verbose','var'));verbose=-1;warn('All underlying functions are executed in verbose mode');end;
             if(verbose);tic;end;
@@ -778,6 +667,7 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
                 hold off;
             end
         end
+        
         function Y = getValues(obj,channel)
             if(~exist('channel','var'));error('No channel selected');end;
             if(isnumeric(channel))
@@ -785,8 +675,9 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
             else
                 Y = obj.channels(channel).value;
             end
-                
+            
         end
+        
         function scale(obj,str,target)
             if(~exist('pass','var'));target=0;end;
             for i=1:length(obj.channels)
@@ -805,19 +696,65 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
         end
     end
     methods (Static)
+        function [ch, xLimits, savePlot, saveName, titles] = splitVarargin(varargin)          
+            varargin = varargin{1};
+            if(numel(varargin) >= 1)
+                while ~isempty(varargin)
+                    if isa(varargin{1}, 'double') && ~exist('ch')
+                        ch =varargin{1};
+                        varargin(1) = [];
+                    elseif isempty(varargin{1})
+                        varargin(1) = [];
+                    elseif(ischar(varargin{1}))
+                        switch lower(varargin{1})
+                            case 'channels'
+                                ch = varargin{2};
+                                varargin(1:2) = [];
+                            case 'limit'
+                                xLimits = varargin{2};
+                                varargin(1:2) = [];
+                            case 'save'
+                                saveName = varargin{2};
+                                savePlot = true;
+                                varargin(1:2) = [];
+                            case 'titles'
+                                titles = varargin{2};
+                                varargin(1:2) = [];
+                            otherwise
+                                warn('Unknown argument');
+                                varargin(1) = [];
+                        end
+                    else
+                        warn('Unknown argument');
+                        varargin(1) = [];
+                    end
+                end
+            end
+            
+            
+            if(~exist('saveName','var'))
+                saveName = [];
+                savePlot = false;
+            end
+            if(~exist('titles','var'))
+                titles = [];
+            end
+            if(~exist('xLimits','var'));xLimits= [];end
+        end
+        
         function obj = isfread(file, verbose,varargin)
             if(~exist('verbose','var'));verbose=-1;warn('All underlying functions are executed in verbose mode');end;
             if ~exist('file', 'var')
                 error('No file name, directory or pattern was specified.');
             end
             sizeRowVarargin = cellfun(@(c) size( c,1), varargin, 'UniformOutput', false);
-             appIndex= find(cellfun(@(x)~isempty(strfind("app",x)), varargin( [sizeRowVarargin{:}]==1)));
+            appIndex= find(cellfun(@(x)~isempty(strfind("app",x)), varargin( [sizeRowVarargin{:}]==1)));
             % Check whether file is a folder.
             if (isa(file, 'char' ) && exist(file, 'dir') )
                 folder = file;
                 % Get a list of all files that have the extension '.isf' or '.ISF'.
                 files = [ dir(fullfile(folder, '*.isf')) ];
-           elseif appIndex==0
+            elseif appIndex==0
                 % The pattern is not a folder, so must be a file name or a pattern with
                 % wildcards (such as 'Traces/TEK0*.ISF').
                 [folder, ~, ~] = fileparts(file);
@@ -833,16 +770,16 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
             obj = scope('Unknown (ISF)');
             obj.firmware_version = 'Unknown (ISF)';
             if appIndex>0
-               folder = varargin{appIndex +1};
+                folder = varargin{appIndex +1};
                 
                 
-                   chNames = file(~cellfun('isempty',(regexpi(file,'CH'))));
-                 mthNames = file(~cellfun('isempty',(regexpi(file,'Math'))));
-                 
-                 obj.fileName = extractBefore(file{1},'CH');
+                chNames = file(~cellfun('isempty',(regexpi(file,'CH'))));
+                mthNames = file(~cellfun('isempty',(regexpi(file,'MTH'))));
+                
+                obj.fileName = extractBefore(file{1},'CH');
             elseif numel(fileNames)==0
                 error('The pattern did not match any file or files: %s', file);
-            elseif numel(fileNames) >1 &&  contains(input('Extract one measurement: ','s'),["y","Y","yes","j","ja"]) 
+            elseif numel(fileNames) >1 &&  contains(input('Extract one measurement: ','s'),["y","Y","yes","j","ja"])
                 fileInDir(:,2) = fileNames';
                 fileInDir(:,1)= num2cell(1:numel(fileNames))';
                 table(fileInDir)
@@ -850,13 +787,13 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
                 fName = extractBefore(fileInDir(fileNr,2),'CH');
                 fileIDs=~cellfun('isempty',regexp(fileNames,fName));
                 fileNames= fileNames(fileIDs);
-                 chNames = fileNames(~cellfun('isempty',(regexp(fileNames,'tek[0-9]*CH'))))
-                 mthNames = fileNames(~cellfun('isempty',(regexp(fileNames,'tek[0-9]*MTH'))))
-                 obj.fileName = fName{1};
-                 
+                chNames = fileNames(~cellfun('isempty',(regexp(fileNames,'tek[0-9]*CH'))))
+                mthNames = fileNames(~cellfun('isempty',(regexp(fileNames,'tek[0-9]*MTH'))))
+                obj.fileName = fName{1};
+                
             end
             
-           
+            
             obj.channels = channel.empty(numel(chNames),0);
             % channel read
             for s=1:numel(chNames)
@@ -931,11 +868,11 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
                 if isempty(str2double(regexp(h, 'BYT_NR?\s+(\d+)', 'once', 'tokens')))
                     warn('Failed to read some part of, or possibly all of, the header in the file %s.', fileName);
                 end
-                 % Calculate the horizontal (x) and vertical (y) values. These equations
+                % Calculate the horizontal (x) and vertical (y) values. These equations
                 % are given on page 2-171 of the Programmer Manual.
                 n = (1:obj.sample_length)';
                 if s==1
-                    obj.time = (obj.sample_interval * (n - str2double(regexp(h, 'PT_OF?F?\s+([-\+\d\.eE]+)', 'once', 'tokens'))))' - obj.horizontal_delay; 
+                    obj.time = (obj.sample_interval * (n - str2double(regexp(h, 'PT_OF?F?\s+([-\+\d\.eE]+)', 'once', 'tokens'))))' - obj.horizontal_delay;
                 end
                 % read channel signals
                 
@@ -979,17 +916,17 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
                 end
                 
                 
-                    obj.math(s).waveform_type       = char(regexp(h, 'WFMTYP?E?\s+(.*?)\s*[;:]', 'once', 'tokens'));
-                    obj.math(s).point_format        = char(regexp(h, 'PT_FM?T?\s+(.*?)\s*[;:]', 'once', 'tokens'));
-                    obj.math(s).horizontal_units    = char(regexp(h, 'XUNI?T?\s+"*(.*?)"*[;:]', 'once', 'tokens'));
-                    obj.math(s).horizontal_scale    = str2double(regexp(h, 'HSCAL?E?\s+([-\+\d\.eE]+)', 'once', 'tokens'));
-                    obj.math(s).horizontal_delay    = str2double(regexp(h, 'HDELA?Y?\s+([-\+\d\.eE]+)', 'once', 'tokens'));
-                    obj.math(s).sample_interval     = str2double(regexp(h, 'XINC?R?\s+([-\+\d\.eE]+)', 'once', 'tokens'));
-                    obj.math(s).record_length       = 'Unknown (ISF)';
-                    obj.math(s).gating              = 'Unknown (ISF)';
-                    obj.math(s).gating_min          = 'Unknown (ISF)';
-                    obj.math(s).gating_max          = 'Unknown (ISF)';
-                    obj.math(s).sample_length       = str2double(regexp(h, 'NR_PT?\s+(\d+)', 'once', 'tokens'));
+                obj.math(s).waveform_type       = char(regexp(h, 'WFMTYP?E?\s+(.*?)\s*[;:]', 'once', 'tokens'));
+                obj.math(s).point_format        = char(regexp(h, 'PT_FM?T?\s+(.*?)\s*[;:]', 'once', 'tokens'));
+                obj.math(s).horizontal_units    = char(regexp(h, 'XUNI?T?\s+"*(.*?)"*[;:]', 'once', 'tokens'));
+                obj.math(s).horizontal_scale    = str2double(regexp(h, 'HSCAL?E?\s+([-\+\d\.eE]+)', 'once', 'tokens'));
+                obj.math(s).horizontal_delay    = str2double(regexp(h, 'HDELA?Y?\s+([-\+\d\.eE]+)', 'once', 'tokens'));
+                obj.math(s).sample_interval     = str2double(regexp(h, 'XINC?R?\s+([-\+\d\.eE]+)', 'once', 'tokens'));
+                obj.math(s).record_length       = 'Unknown (ISF)';
+                obj.math(s).gating              = 'Unknown (ISF)';
+                obj.math(s).gating_min          = 'Unknown (ISF)';
+                obj.math(s).gating_max          = 'Unknown (ISF)';
+                obj.math(s).sample_length       = str2double(regexp(h, 'NR_PT?\s+(\d+)', 'once', 'tokens'));
                 
                 
                 % In addition, some header fields are described in the Programmer
@@ -1000,25 +937,25 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
                 if isempty(str2double(regexp(h, 'BYT_NR?\s+(\d+)', 'once', 'tokens')))
                     warn('Failed to read some part of, or possibly all of, the header in the file %s.', fileName);
                 end
-      
-                 if s==1
-                    obj.time = (obj.math(s).sample_interval * (n - str2double(regexp(h, 'PT_OF?F?\s+([-\+\d\.eE]+)', 'once', 'tokens'))))';%  - obj.math(s).horizontal_delay; 
+                
+                if s==1
+                    obj.math(s).time = (obj.math(s).sample_interval * (n - str2double(regexp(h, 'PT_OF?F?\s+([-\+\d\.eE]+)', 'once', 'tokens'))))';%  - obj.math(s).horizontal_delay;
                 end
                 % read channel signals
                 obj.math(s).channel = channel.isfreadSignal(obj,fileName,fileID,h);
                 % Close the file
                 fclose(fileID);
-%                 
+                %
             end
         end
-      
+        
         function obj = wfmread(file, verbose,varargin)
             if(~exist('verbose','var'));verbose=-1;warn('All underlying functions are executed in verbose mode');end;
             if ~exist('file', 'var')
                 error('No file name, directory or pattern was specified.');
             end
-             sizeRowVarargin = cellfun(@(c) size( c,1), varargin, 'UniformOutput', false);
-             appIndex= find(cellfun(@(x)~isempty(strfind("app",x)), varargin( [sizeRowVarargin{:}]==1)));
+            sizeRowVarargin = cellfun(@(c) size( c,1), varargin, 'UniformOutput', false);
+            appIndex= find(cellfun(@(x)~isempty(strfind("app",x)), varargin( [sizeRowVarargin{:}]==1)));
             % Check whether file is a folder.
             if(isa(file, 'char' ) && exist(file, 'dir') )
                 folder = file;
@@ -1035,23 +972,23 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
                 files = filesAndFolders(~[filesAndFolders.isdir]);
             end
             if isempty(appIndex) || appIndex==0
-            fileNames = {files.name};
-            datetimes = datestr([files.datenum]);
+                fileNames = {files.name};
+                datetimes = datestr([files.datenum]);
             end
-             obj = scope('Unknown (WFM)');
+            obj = scope('Unknown (WFM)');
             obj.firmware_version = 'Unknown (WFM)';
             
             if appIndex>0
-               folder = varargin{appIndex +1};
+                folder = varargin{appIndex +1};
                 
                 
-                   chNames = file(~cellfun('isempty',(regexpi(file,'CH'))));
-                 mthNames = file(~cellfun('isempty',(regexpi(file,'MaTH'))));
-                 
-                 obj.fileName = extractBefore(file{1},'_Ch');
+                chNames = file(~cellfun('isempty',(regexpi(file,'CH'))));
+                mthNames = file(~cellfun('isempty',(regexpi(file,'MaTH'))));
+                
+                obj.fileName = extractBefore(file{1},'_Ch');
             elseif numel(fileNames)==0
-                error('The pattern did not match any file or files: %s', file);                 
-            elseif numel(fileNames) >1 &&  contains(input('Extract one measurement: ','s'),["y","Y","yes","j","ja"]) 
+                error('The pattern did not match any file or files: %s', file);
+            elseif numel(fileNames) >1 &&  contains(input('Extract one measurement: ','s'),["y","Y","yes","j","ja"])
                 fileInDir(:,2) = fileNames';
                 fileInDir(:,1)= num2cell(1:numel(fileNames))';
                 table(fileInDir)
@@ -1060,12 +997,12 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
                 fileIDs=~cellfun('isempty',regexp(fileNames,fName));
                 fileNames= fileNames(fileIDs);
                 
-                 chNames = fileNames(~cellfun('isempty',(regexpi(fileNames,'CH'))));
-                 mthNames = fileNames(~cellfun('isempty',(regexpi(fileNames,'MaTH'))));
-                 
-                 obj.fileName = fName{1};
-            end         
-      
+                chNames = fileNames(~cellfun('isempty',(regexpi(fileNames,'CH'))));
+                mthNames = fileNames(~cellfun('isempty',(regexpi(fileNames,'MaTH'))));
+                
+                obj.fileName = fName{1};
+            end
+            
             obj.channels = channel.empty(numel(chNames),0);
             for s=1:numel(chNames)
                 fileName = chNames{s};
@@ -1088,9 +1025,9 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
                     obj.gating_min          = 'Unknown (WFM)';
                     obj.gating_max          = 'Unknown (WFM)';
                     obj.sample_length       = info.nop;
-                    obj.time = t';    
+                    obj.time = t';
                 end
-                        
+                
                 % create signal
                 obj.channels(s) = channel.wfmreadSignal(fileName,y,info);
             end
@@ -1112,17 +1049,17 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
                     obj.addprop('math')
                 end
                 
-                    obj.math(s).waveform_type       = info.versioning_number;
-                    obj.math(s).sample_interval     = 1/info.samplingrate;
-                    obj.math(s).horizontal_units =  deblank(extractBefore(info.tunit,'!'));
-                    obj.math(s).record_length       = 'Unknown (WFM)';
-                    obj.math(s).gating              = 'Unknown (WFM)';
-                    obj.math(s).gating_min          = 'Unknown (WFM)';
-                    obj.math(s).gating_max          = 'Unknown (WFM)';
-                    obj.math(s).sample_length       = info.nop;
-                    obj.math(s).time = t';    
+                obj.math(s).waveform_type       = info.versioning_number;
+                obj.math(s).sample_interval     = 1/info.samplingrate;
+                obj.math(s).horizontal_units =  deblank(extractBefore(info.tunit,'!'));
+                obj.math(s).record_length       = 'Unknown (WFM)';
+                obj.math(s).gating              = 'Unknown (WFM)';
+                obj.math(s).gating_min          = 'Unknown (WFM)';
+                obj.math(s).gating_max          = 'Unknown (WFM)';
+                obj.math(s).sample_length       = info.nop;
+                obj.math(s).time = t';
                 
-                        
+                
                 % create signal
                 obj.math(s).channel = channel.wfmreadSignal(fileName,y,info);
                 if strcmp(obj.math(s).channel.name,'math')

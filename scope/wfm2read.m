@@ -150,12 +150,18 @@ end
 if isempty(pname)
     pname='.';
 end
+% make it compatible for different platforms
+if ispc
+    slash = '\';
+else
+    slash = '/';
+end
 
-if exist([pname,'\', fname,'.wfm'],'file')~=2
+if exist([pname,slash, fname,'.wfm'],'file')~=2
     error(['Invalid file name: ' filename]);
 end
 
-filename=[pname,'\',fname,'.wfm'];
+filename=[pname,slash,fname,'.wfm'];
 
 [fid,message]=fopen(filename);
 

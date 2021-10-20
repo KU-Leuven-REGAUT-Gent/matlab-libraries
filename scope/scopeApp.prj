@@ -1,6 +1,6 @@
 <deployment-project plugin="plugin.apptool" plugin-version="1.0">
-  <configuration build-checksum="3593192608" file="D:\Users\Dimitri\Documenten\Libraries\MATLAB\matlab-libraries\scope\scope app.prj" location="D:\Users\Dimitri\Documenten\Libraries\MATLAB\matlab-libraries\scope" name="scope app" target="target.mlapps" target-name="Package App">
-    <param.appname>scope app</param.appname>
+  <configuration build-checksum="793157090" file="C:\Users\Dimitri De Schuyter\Documents\Libraries\MATLAB\matlab-libraries\scope\scopeApp.prj" location="C:\Users\Dimitri De Schuyter\Documents\Libraries\MATLAB\matlab-libraries\scope" name="scopeApp" target="target.mlapps" target-name="Package App">
+    <param.appname>scopeApp</param.appname>
     <param.authnamewatermark>Dimitri De Schuyter</param.authnamewatermark>
     <param.email />
     <param.company>KU Leuven</param.company>
@@ -8,9 +8,10 @@
     <param.icons />
     <param.summary />
     <param.description>Added  pn plotting function
-Fix multiple channel profinet decoding</param.description>
-    <param.screenshot>C:\Users\Dimitri De Schuyter\AppData\Local\Temp\tpee58d609_dc37_4095_b57b_45ef4fa50494.png</param.screenshot>
-    <param.version>1.0</param.version>
+Fix multiple channel profinet decoding
+Fix compatibillity for multiple platforms</param.description>
+    <param.screenshot>C:\Users\Dimitri De Schuyter\AppData\Local\Temp\tp5c3643c6_c3d8_4f93_9ee4_215ee6bb9eeb.png</param.screenshot>
+    <param.version>1.1</param.version>
     <param.products.name />
     <param.products.id />
     <param.products.version />
@@ -22,7 +23,6 @@ Fix multiple channel profinet decoding</param.description>
       <param.icon />
       <param.icons />
       <param.summary />
-      <param.version />
       <param.products.name />
       <param.products.id />
       <param.products.version />
@@ -33,26 +33,26 @@ Fix multiple channel profinet decoding</param.description>
       <file>${PROJECT_ROOT}\scopeApp.mlapp</file>
     </fileset.main>
     <fileset.depfun>
-      <file>D:\Users\Dimitri\Documenten\Libraries\MATLAB\matlab-libraries\color.m</file>
-      <file>D:\Users\Dimitri\Documenten\Libraries\MATLAB\matlab-libraries\eth.m</file>
-      <file>D:\Users\Dimitri\Documenten\Libraries\MATLAB\matlab-libraries\ethPHYdecode.m</file>
-      <file>D:\Users\Dimitri\Documenten\Libraries\MATLAB\matlab-libraries\plt.m</file>
-      <file>D:\Users\Dimitri\Documenten\Libraries\MATLAB\matlab-libraries\pltColor.m</file>
+      <file>C:\Users\Dimitri De Schuyter\Documents\Libraries\MATLAB\matlab-libraries\color.m</file>
+      <file>C:\Users\Dimitri De Schuyter\Documents\Libraries\MATLAB\matlab-libraries\eth.m</file>
+      <file>C:\Users\Dimitri De Schuyter\Documents\Libraries\MATLAB\matlab-libraries\ethPHYdecode.m</file>
+      <file>C:\Users\Dimitri De Schuyter\Documents\Libraries\MATLAB\matlab-libraries\logo's\CINI4.0_1920.png</file>
+      <file>C:\Users\Dimitri De Schuyter\Documents\Libraries\MATLAB\matlab-libraries\logo's\KULEUVEN_CMYK_LOGO.png</file>
+      <file>C:\Users\Dimitri De Schuyter\Documents\Libraries\MATLAB\matlab-libraries\plt.m</file>
+      <file>C:\Users\Dimitri De Schuyter\Documents\Libraries\MATLAB\matlab-libraries\pltColor.m</file>
       <file>${PROJECT_ROOT}\channel.m</file>
       <file>${PROJECT_ROOT}\scope.m</file>
       <file>${PROJECT_ROOT}\wfm2read.m</file>
-      <file>D:\Users\Dimitri\Documenten\Libraries\MATLAB\matlab-libraries\warn.m</file>
-      <file>H:\00. Docs\Logo's\Bedrijven\KULEUVEN_CMYK_LOGO.png</file>
-      <file>H:\00. Docs\Logo's\Project\CINI4.0_1920.png</file>
+      <file>C:\Users\Dimitri De Schuyter\Documents\Libraries\MATLAB\matlab-libraries\warn.m</file>
     </fileset.depfun>
     <fileset.resources />
     <fileset.package />
     <build-deliverables>
-      <file location="D:\Users\Dimitri\Documenten\Libraries\MATLAB\matlab-libraries" name="scope" optional="false">D:\Users\Dimitri\Documenten\Libraries\MATLAB\matlab-libraries\scope</file>
+      <file location="C:\Users\Dimitri De Schuyter\Documents\Libraries\MATLAB\matlab-libraries" name="scope" optional="false">C:\Users\Dimitri De Schuyter\Documents\Libraries\MATLAB\matlab-libraries\scope</file>
     </build-deliverables>
     <workflow />
     <matlab>
-      <root>C:\Program Files\MATLAB\R2020a</root>
+      <root>C:\MATLAB\R2021a</root>
       <toolboxes>
         <toolbox name="matlabcoder" />
         <toolbox name="embeddedcoder" />

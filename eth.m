@@ -37,9 +37,9 @@
 %  %        ...)                Possible parameters:                      %
 %  %                                  'verbose', 'threshold',             %
 %  %                                  'cut_off_frequency'                 %
-%  %                                                                      %
-%  %      phySignal(            Store physical signals of the packet       %
-%  %        objScope)              Scope object to read                  %
+%  %      Under construction:                                              %
+%  %      copyPhysicalSignal(  Store physical signals of the packet       %
+%  %        objScope)               Scope object to read                  %
 %  %                                                                      %
 %  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  %        FUNCTIONS (non-static)                                        %
@@ -596,14 +596,56 @@ classdef eth < handle
         
         %% FUNCTION - Scope READ
         function obj = scoperead(varargin)
-            if(nargin >= 1)
+            % Splitting variable input to thresshold, cut_off_frequency and
+            % verbose
+            [objScope, chNr, threshold, cut_off_frequency, verbose] = eth.splitVarargin(varargin);
+            
+            % 
+            objPHY = ethPHYdecode(objScope,'channelnr',chNr,'threshold',threshold,'cut_off_frequency',cut_off_frequency,'verbose',verbose-(verbose>0));
+            
+            
+            Y = objPHY.value;
+            
+            SSD = find(Y(1:end-1)==-1 & Y(2:end)==-2);
+            ESD = find(Y(1:end-1)==-3 & Y(2:end)==-4);
+            
+            
+            if(SSD(1)>ESD(1));ESD(1)=[];end % removing early End Delimiters
+            if(ESD(end)<SSD(end));SSD(end)=[];end % removing late Start Delimiters
+            
+            %% Preallocating memory
+            obj = eth.empty(0,length(SSD));
+            packetNum = 1;
+            
+            for i=SSD
+                j = i+find(Y(i:end)==-3,1)-1;
+                if(~isempty(j))
+                    NibbleData = Y(i+2:j-1);
+                    if(mod(length(NibbleData),2)==0 && ~range(NibbleData<16 & NibbleData>=0))
+                        % CRC is ignored atm
+                        packetData = NibbleData(15:2:end-8)+NibbleData(16:2:end-8)*16;
+                        obj(packetNum) = eth(packetNum);
+                        obj(packetNum).CRC = NibbleData(end-7:2:end)+NibbleData(end-6:2:end)*16;
+                        obj(packetNum).time = objPHY.time(i);
+                        obj(packetNum).readByteStream(packetData);
+                        obj(packetNum).time_end = obj(packetNum).time + obj(packetNum).packetLen*8*10e-9;
+                        obj(packetNum).frame.encapsulation_type = 1;
+                        packetNum = packetNum + 1;
+                    end
+                end
+            end
+        end
+        
+        function [objScope, chNr, threshold, cut_off_frequency, verbose] = splitVarargin(varargin)
+            varargin = varargin{1};
+            if(numel(varargin) >= 1)
                 if(isa(varargin{1}, 'scope'))
                     objScope = varargin{1};
                 else
                     error('Need a scope object as first input');
                 end
-                if(nargin >= 2)
-                    if(isa(varargin{2}, 'double') && nargin==2)
+                if(numel(varargin) >= 2)
+                    if(isa(varargin{2}, 'double') && numel(varargin)==2)
                         verbose = varargin{2};
                     else
                         varargin(1) = [];
@@ -612,14 +654,14 @@ classdef eth < handle
                                 var = varargin{1};
                                 fields = fieldnames(var);
                                 varargin(length(fields)*2+1:end+length(fields)*2-1)=varargin(2:end);
-                                for i = 1:numel(fields)
-                                    varargin(i*2-1)=fields(i);
-                                    varargin{i*2}=var.(char(fields(1)));
+                                for k = 1:numel(fields)
+                                    varargin(k*2-1)=fields(k);
+                                    varargin{k*2}=var.(char(fields(1)));
                                 end
                             elseif isa(varargin{1}, 'double') && ~exist('chNr')
-                                chNr =varargin{1}; 
+                                chNr =varargin{1};
                                 verbose = varargin{2};
-                                varargin(1:2) = [];    
+                                varargin(1:2) = [];
                             elseif(ischar(varargin{1}))
                                 switch lower(varargin{1})
                                     case 'verbose'
@@ -647,41 +689,8 @@ classdef eth < handle
             if(~exist('verbose','var'));verbose=-1;warn('All underlying functions are executed in verbose mode');end
             if(~exist('threshold','var'));threshold=0.5;end
             if(~exist('cut_off_frequency','var'));cut_off_frequency=2*125e6;end
-            
-            objPHY = ethPHYdecode(objScope,'channelnr',chNr,'threshold',threshold,'cut_off_frequency',cut_off_frequency,'verbose',verbose-(verbose>0));
-            
-            X = objPHY.time;
-            Y = objPHY.value;
-            
-            SSD = find(Y(1:end-1)==-1 & Y(2:end)==-2);
-            ESD = find(Y(1:end-1)==-3 & Y(2:end)==-4);
-            
-            
-            if(SSD(1)>ESD(1));ESD(1)=[];end % removing early End Delimiters
-            if(ESD(end)<SSD(end));SSD(end)=[];end % removing late Start Delimiters
-            
-            %% Preallocating memory
-            obj = eth.empty(0,length(SSD));
-            packetNum = 1;
-            for i=SSD
-                j = i+find(Y(i:end)==-3,1)-1;
-                if(~isempty(j))
-                    NibbleData = Y(i+2:j-1);
-                    if(mod(length(NibbleData),2)==0 && ~range(NibbleData<16 & NibbleData>=0))
-                        % CRC is ignored atm
-                        packetData = NibbleData(15:2:end-8)+NibbleData(16:2:end-8)*16;
-                        obj(packetNum) = eth(packetNum);
-                        obj(packetNum).CRC = NibbleData(end-7:2:end)+NibbleData(end-6:2:end)*16;
-                        obj(packetNum).time = X(i);
-                        obj(packetNum).readByteStream(packetData);
-                        obj(packetNum).time_end = obj(packetNum).time + obj(packetNum).packetLen*8*10e-9;
-                        obj(packetNum).frame.encapsulation_type = 1;
-                        packetNum = packetNum + 1;
-                    end
-                end
-            end
         end
-        
+            
         function hex = mac2hex(mac)
             if(length(mac)==1 && min(size(mac))==1)
                 if(mac<0)
@@ -1070,6 +1079,7 @@ classdef eth < handle
             
             
         end
+        
         function readByteStream (obj, packetData)
             % This function reads packet byte stream
             EtherTypeVLAN = [129,0]; % 0x8100
@@ -1201,11 +1211,12 @@ classdef eth < handle
             end
         end
         
-        function phySignal(obj,objScope)
-            packetCycles = (objScope.time <= obj.time_end & objScope.time >= obj.time);
-            obj.phy_signal = objScope.value{1}(packetCycles);
-      
-        end
+%         function copyPhysicalSignal(obj,objScope)
+%             for i = 1: numel(obj)
+%                 packetCycles = (objScope.time <= obj(i).time_end & objScope.time >= obj(i).time);
+%                 obj.phy_signal = objScope.channels(i).value(packetCycles);
+%             end
+%         end
     end
     methods (Access = private)
         function setFrameID (obj, FrameID, APDU)

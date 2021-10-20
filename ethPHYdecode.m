@@ -5,57 +5,8 @@ classdef ethPHYdecode
     end
     methods
         function obj = ethPHYdecode(varargin)
-            if(nargin >= 1)
-                if(isa(varargin{1}, 'scope'))
-                    objScope = varargin{1};
-                else
-                    ethPHYdecode.help;
-                    error('Need a scope object as first input');
-                end
-                if(nargin >= 2)
-                    if(isa(varargin{2}, 'double') && nargin==2)
-                        verbose = varargin{2};
-                    else
-                        varargin(1) = [];
-                        while ~isempty(varargin)
-                            if(isstruct(varargin{1}))
-                                var = varargin{1};
-                                fields = fieldnames(var);
-                                varargin(length(fields)*2+1:end+length(fields)*2-1)=varargin(2:end);
-                                for i = 1:numel(fields)
-                                    varargin(i*2-1)=fields(i);
-                                    varargin{i*2}=var.(char(fields(1)));
-                                end
-                            elseif(ischar(varargin{1}))
-                                switch lower(varargin{1})
-                                    case 'verbose'
-                                        verbose = varargin{2};
-                                        varargin(1:2) = [];
-                                    case 'threshold'
-                                        threshold = varargin{2};
-                                        varargin(1:2) = [];
-                                    case 'channelnr'
-                                        chNr = varargin{2};
-                                        varargin(1:2) = [];
-                                    case 'cut_off_frequency'
-                                        cut_off_frequency = varargin{2};
-                                        varargin(1:2) = [];
-                                    otherwise
-                                        warn('Unknown argument');
-                                        varargin(1) = [];
-                                end
-                            else
-                                warn('Unknown argument');
-                                varargin(1) = [];
-                            end
-                        end
-                    end
-                end
-            end
-            
-            if(~exist('verbose','var'));verbose=-1;warn('All underlying functions are executed in verbose mode');end;
-            if(~exist('threshold','var'));threshold=0.5;end;
-            if(~exist('cut_off_frequency','var'));cut_off_frequency=128e6;end;
+           
+            [objScope, chNr, threshold, cut_off_frequency, verbose] = obj.splitVarargin(varargin);
             
             %try
             if(verbose);disp(['Starting ETH decoding:']);tic;end;
@@ -109,16 +60,17 @@ classdef ethPHYdecode
         % %%                              FUNCTIONS                              %%
         % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %%
-        function [Vx,Vy] = mlt(varargin)
-            if(nargin >= 1)
+        function [objScope, chNr, threshold, cut_off_frequency, verbose] = splitVarargin(varargin)
+            varargin = varargin{1};
+            if(numel(varargin) >= 1)
                 if(isa(varargin{1}, 'scope'))
                     objScope = varargin{1};
                 else
                     ethPHYdecode.help;
                     error('Need a scope object as first input');
                 end
-                if(nargin >= 2)
-                    if(isa(varargin{2}, 'double') && nargin==2)
+                if(numel(varargin) >= 2)
+                    if(isa(varargin{2}, 'double') && numel(varargin)==2)
                         verbose = varargin{2};
                     else
                         varargin(1) = [];
@@ -136,11 +88,11 @@ classdef ethPHYdecode
                                     case 'verbose'
                                         verbose = varargin{2};
                                         varargin(1:2) = [];
-                                    case 'channelnr'
-                                        chNr = varargin{2};
-                                        varargin(1:2) = [];
                                     case 'threshold'
                                         threshold = varargin{2};
+                                        varargin(1:2) = [];
+                                    case 'channelnr'
+                                        chNr = varargin{2};
                                         varargin(1:2) = [];
                                     case 'cut_off_frequency'
                                         cut_off_frequency = varargin{2};
@@ -156,10 +108,16 @@ classdef ethPHYdecode
                         end
                     end
                 end
-            end           
-            if(~exist('verbose','var'));verbose=-1;warn('All underlying functions are executed in verbose mode');end;
-            if(~exist('threshold','var'));threshold=0.5;end;
-            if(~exist('cut_off_frequency','var'));cut_off_frequency=2*125e6;end;
+            end
+            
+            if(~exist('verbose','var'));verbose=-1;warn('All underlying functions are executed in verbose mode');end
+            if(~exist('threshold','var'));threshold=0.5;end
+            if(~exist('cut_off_frequency','var'));cut_off_frequency=2*125e6;end
+        end
+        
+      
+        function [Vx,Vy] = mlt(varargin)
+            [objScope, chNr, threshold, cut_off_frequency, verbose] = ethPHYdecode.splitVarargin(varargin);
             
             %% CHECK FOR A HIGH ENOUGH SAMPLE RATE
             if(objScope.sample_interval > 4e-9)
@@ -169,11 +127,14 @@ classdef ethPHYdecode
             end
             %% INTERPOLATE TILL 1GHZ SAMPLE RATE
             X = objScope.time;
+            % For backward compatibility check if objscope contains value,
+            % with new version the scope object contains multiple channels.
             if isprop(objScope,"value")
                 Y = objScope.value(chNr);
             else
                 Y = objScope.channels(chNr).value;
             end
+            
             Scale = 1;
             Freq = 8e-9;
             while objScope.sample_interval > 1e-9
@@ -181,6 +142,7 @@ classdef ethPHYdecode
                 objScope.sample_interval = objScope.sample_interval / 2;
                 Scale = Scale * 2;
             end
+            
             X = X(1)-objScope.sample_interval*(Scale-3)/2:objScope.sample_interval:X(end)+objScope.sample_interval*(Scale+1)/2;
             expfft = ceil(log2(length(Y)));
             F = fft(Y,2^expfft);
