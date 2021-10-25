@@ -124,7 +124,6 @@ classdef eth < handle
                 rectangle ( 'Position' , [TimeStart offset_y-(lineWidth/2) (TimeEnd-TimeStart) lineWidth],...
                     'FaceColor' , FaceColor,...
                     'EdgeColor', EdgeColor);
-                
             end
         end
     end
@@ -1211,12 +1210,14 @@ classdef eth < handle
             end
         end
         
-%         function copyPhysicalSignal(obj,objScope)
-%             for i = 1: numel(obj)
-%                 packetCycles = (objScope.time <= obj(i).time_end & objScope.time >= obj(i).time);
-%                 obj.phy_signal = objScope.channels(i).value(packetCycles);
-%             end
-%         end
+        function copyPhysicalSignal(obj,objScope,chNr)
+            
+            for i = 1: numel(obj)
+                packetCycles = (objScope.time <= obj(i).time_end & objScope.time >= obj(i).time);
+                
+                obj(i).phy_signal = objScope.channels(chNr).value(packetCycles);
+            end
+        end
     end
     methods (Access = private)
         function setFrameID (obj, FrameID, APDU)

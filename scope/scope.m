@@ -242,76 +242,34 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
             
         end
         
-        function [freq_axis, fft_result,N] = fft(obj,scale,window)
-            N= 2^nextpow2( length(obj.channels{1}.value));
-            data = zeros(1,N);
-            data(1:length(obj.channels{1}.value)) = obj.channels{1}.value;
-            switch window
-                case 'hanning'
-                    %Characteristics:
-                    % -     Better frequency,
-                    % -     Poorer magnitude accuracy than Rectangular.
-                    % -     Hanning has slightly poorer frequencyresolution than Hamming.
-                    % Best for:
-                    % -     Sine, periodic, and narrow-band random noise.
-                    % -     Transients or bursts where the signal levels before and after the event are significantly different
-                    fftWindow = hanning(N);
-                case 'hamming'
-                    %Characteristics:
-                    % -     Better frequency, ,
-                    % -     poorer magnitude accuracy than Rectangular
-                    % -     THamming has slightly better frequencyresolution than Hanning
-                    % Best for:
-                    % -     Sine, periodic, and narrow-band random noise
-                    % -     Transients or bursts where the signal levels before and after the event are significantly different
-                    fftWindow = hamming(N);
-                case 'rectangle'
-                    %Characteristics:
-                    % -     Best frequency,
-                    % -     worst magnitude resolution
-                    % -     This isessentially the same as no window
-                    % Best for:
-                    % -     Transients or bursts where the signal levels before and after the event are nearly equal
-                    % -     Equal-amplitude sine waves with frequencies that are very close
-                    fftWindow = rectwin(N);
-                case 'blackmanharris'
-                    %Characteristics:
-                    % -     worst frequency resolution,
-                    % -     Best magnitude
-                    % -     This isessentially the same as no window
-                    % Best for:
-                    % -     Predominantly single frequency signals to look forhigher order harmonics
-                    fftWindow = blackmanharris(N);
-                case 'gaussian'
-                    %Characteristics:
-                    % -     worst frequency resolution,
-                    % -     Best magnitude
-                    % -     This isessentially the same as no window
-                    % Best for:
-                    % -     Predominantly single frequency signals to look forhigher order harmonics
-                    fftWindow = gausswin(N);
-                otherwise
-                    
-            end
-            if exist('fftWindow','var')
-                data = data'.*fftWindow;
-            else
-                data = data';
-            end
-            Fs=1/obj(1).sample_interval;
-            spectr_res= Fs/N;
-            max_freq_possible = Fs/2;
-            freq_axis = (Fs*(0:(N/2))/N)';
+        function fft(obj)
+            figure;
+            fontSize = 20;
+            set(gca,'fontsize',fontSize+2) % set fontsize of the plot to 20
+            set(gcf,'units','normalized','outerposition',[0 0 1 1]) % full screen
+            set(0, 'DefaultAxesFontSize', fontSize);
+            subplotArray=[];
+            chSize = numel(obj.channels);
+           
+            [freq_axis, fft_result] = obj.channels(1).fft(obj.sample_interval,"","hamming");
+            subplotArray(1) =subplot(chSize,1,1);
+            plot(freq_axis, fft_result,'LineWidth',2)
+             title('FFT of scope channels');
+            subtitle(['Channel ' obj.channels(1).name])
             
-            fft_res = fft(data,N);
-            fft_abs= (abs(fft_res/N));
-            fft_result=fft_abs(1:N/2+1);
-            fft_result(2:end-1) = 2*fft_result(2:end-1);
-            if strcmp(scale, 'db')
-                fft_result = mag2db(fft_result);
+            ylabel('amplitude');
+            for i=2:chSize
+                [freq_axis, fft_result] = obj.channels(i).fft(obj.sample_interval,"","hamming");
+                subplotArray(i) =subplot(chSize,1,i);                
+                plot(freq_axis, fft_result,'LineWidth',2)
+                subtitle(['Channel ' obj.channels(i).name])
+                ylabel('amplitude');
             end
+            xlabel('Frequency [Hz]');
             
+            linkaxes(subplotArray,'x');
         end
+        
         % ----------------------- plot function ----------------------------
         
         function plotChannels(obj,varargin)
@@ -793,6 +751,13 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
                 
             end
             
+            % read setup file 
+            setupDir = fullfile(folder, [obj.fileName '.set']);
+            if exist(setupDir, 'file') == 2
+                setupText = fileread(setupDir);
+            else
+                warning('no setup file found for this measurement');
+            end
             
             obj.channels = channel.empty(numel(chNames),0);
             % channel read
@@ -875,11 +840,15 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
                     obj.time = (obj.sample_interval * (n - str2double(regexp(h, 'PT_OF?F?\s+([-\+\d\.eE]+)', 'once', 'tokens'))))' - obj.horizontal_delay;
                 end
                 % read channel signals
-                
                 obj.channels(s) = channel.isfreadSignal(obj,fileName,fileID,h);
+                
+                % read setup file
+                if exist('setupText','var')
+                    obj.channels(s) = obj.channels(s).isfreadSetup(setupText);
+                end
+                
                 % Close the file
                 fclose(fileID);
-                
             end
             
             % -------- math read -----------

@@ -10,9 +10,21 @@ classdef channel < dynamicprops & matlab.mixin.Copyable
 %             vertical_offset, ...
 %             vertical_scale, ...
 %             vertical_position, ...
-            value
-        
+            value, ...
+            gain, ...
+            forcedRange, ...
+            propagationDelay, ...
+            invert, ...
+            deskew, ...
+            bandwidth, ...
+            coupling, ...
+            offset, ...
+            position, ...
+            scale, ...
+            termination, ...
+            label      
     end
+    
     methods
         function obj = channel(name)
             obj.name = name;
@@ -27,9 +39,212 @@ classdef channel < dynamicprops & matlab.mixin.Copyable
 %            scopeTemp = scopeTemp.copy(s);
             obj.pn = eth.scoperead(scopeTemp,i,1);
         end
+        
+        function [freq_axis, fft_result,N] = advancedFFT(obj,scale,window,gatePosition,gateDuration,levelOffset)
+            
+            recordStart = gatePosition-gateDuration/2;
+            recordEnd = gatePosition+gateDuration/2;
+            periodExtracted = zeros(1,length(obj.time));
+            t1 = find(obj.time>=recordStart,1,'first');
+            t2= find(obj.time>=recordEnd,1,'first');
+            periodExtracted(t1:t2) = 1;
+            figure
+            hold on
+            plot(objScope(1).time,obj.channels{1}.value)
+            plot(objScop.time,periodExtracted);
+            hold off
+            
+            sizeData = length(objScope(1).value{1}(t1:t2-1));
+            N=sizeData;%2^(nextpow2( sizeData));
+            Fs=1/objScope(1).sample_interval;
+            
+            if sizeData< N
+                data =zeros(1,N);
+                data(1:sizeData)= obj.channels{1}.value(t1:t2-1);
+            else
+                data= obj.channels{1}.value(t1:t2-1);
+                data=data(1:N) ;
+            end
+            
+            switch window
+                case 'hanning'
+                    %Characteristics:
+                    % -     Better frequency,
+                    % -     Poorer magnitude accuracy than Rectangular.
+                    % -     Hanning has slightly poorer frequencyresolution than Hamming.
+                    % Best for:
+                    % -     Sine, periodic, and narrow-band random noise.
+                    % -     Transients or bursts where the signal levels before and after the event are significantly different
+                    fftWindow = hanning(N);
+                case 'hamming'
+                    %Characteristics:
+                    % -     Better frequency, ,
+                    % -     poorer magnitude accuracy than Rectangular
+                    % -     THamming has slightly better frequencyresolution than Hanning
+                    % Best for:
+                    % -     Sine, periodic, and narrow-band random noise
+                    % -     Transients or bursts where the signal levels before and after the event are significantly different
+                    fftWindow = hamming(N);
+                case 'rectangle'
+                    %Characteristics:
+                    % -     Best frequency,
+                    % -     worst magnitude resolution
+                    % -     This isessentially the same as no window
+                    % Best for:
+                    % -     Transients or bursts where the signal levels before and after the event are nearly equal
+                    % -     Equal-amplitude sine waves with frequencies that are very close
+                    fftWindow = rectwin(N);
+                case 'blackmanharris'
+                    %Characteristics:
+                    % -     worst frequency resolution,
+                    % -     Best magnitude
+                    % -     This isessentially the same as no window
+                    % Best for:
+                    % -     Predominantly single frequency signals to look forhigher order harmonics
+                    fftWindow = blackmanharris(N);
+                case 'gaussian'
+                    %Characteristics:
+                    % -     worst frequency resolution,
+                    % -     Best magnitude
+                    % -     This isessentially the same as no window
+                    % Best for:
+                    % -     Predominantly single frequency signals to look forhigher order harmonics
+                    fftWindow = gausswin(N);
+                otherwise
+                    
+            end
+            if exist('fftWindow','var')
+                data = data'.*fftWindow;
+            else
+                data = data';
+            end
+            Fs=1/obj(1).sample_interval;
+            spectr_res= Fs/N;
+            max_freq_possible = Fs/2;
+            freq_axis = (Fs*(0:(N/2))/N)';
+            
+            fft_res = fft(data,N);
+            fft_abs= (abs(fft_res/N));
+            fft_result=fft_abs(1:N/2+1);
+            fft_result(2:end-1) = 2*fft_result(2:end-1);
+            if strcmp(scale, 'db')
+                fft_result = mag2db(fft_result)- mag2db(levelOffset);
+            end
+            
+        end
+        
+        function [freq_axis, fft_result,N] = fft(obj,sample_interval,scale,window)
+            N= 2^nextpow2( length(obj.value));
+            data = zeros(1,N);
+            data(1:length(obj.value)) = obj.value;
+            switch window
+                case 'hanning'
+                    %Characteristics:
+                    % -     Better frequency,
+                    % -     Poorer magnitude accuracy than Rectangular.
+                    % -     Hanning has slightly poorer frequency resolution than Hamming.
+                    % Best for:
+                    % -     Sine, periodic, and narrow-band random noise.
+                    % -     Transients or bursts where the signal levels before and after the event are significantly different
+                    fftWindow = hanning(N);
+                case 'hamming'
+                    %Characteristics:
+                    % -     Better frequency, ,
+                    % -     poorer magnitude accuracy than Rectangular
+                    % -     THamming has slightly better frequency resolution than Hanning
+                    % Best for:
+                    % -     Sine, periodic, and narrow-band random noise
+                    % -     Transients or bursts where the signal levels before and after the event are significantly different
+                    fftWindow = hamming(N);
+                case 'rectangle'
+                    %Characteristics:
+                    % -     Best frequency,
+                    % -     worst magnitude resolution
+                    % -     This isessentially the same as no window
+                    % Best for:
+                    % -     Transients or bursts where the signal levels before and after the event are nearly equal
+                    % -     Equal-amplitude sine waves with frequencies that are very close
+                    fftWindow = rectwin(N);
+                case 'blackmanharris'
+                    %Characteristics:
+                    % -     worst frequency resolution,
+                    % -     Best magnitude
+                    % -     This isessentially the same as no window
+                    % Best for:
+                    % -     Predominantly single frequency signals to look forhigher order harmonics
+                    fftWindow = blackmanharris(N);
+                case 'gaussian'
+                    %Characteristics:
+                    % -     worst frequency resolution,
+                    % -     Best magnitude
+                    % -     This isessentially the same as no window
+                    % Best for:
+                    % -     Predominantly single frequency signals to look forhigher order harmonics
+                    fftWindow = gausswin(N);
+                otherwise
+                    
+            end
+            if exist('fftWindow','var')
+                data = data'.*fftWindow;
+            else
+                data = data';
+            end
+            Fs=1/sample_interval;
+            spectr_res= Fs/N;
+            max_freq_possible = Fs/2;
+            freq_axis = (Fs*(0:(N/2))/N)';
+            
+            fft_res = fft(data,N);
+            fft_abs= (abs(fft_res/N));
+            fft_result=fft_abs(1:N/2+1);
+            fft_result(2:end-1) = 2*fft_result(2:end-1);
+            if strcmp(scale, 'db')
+                fft_result = mag2db(fft_result);
+            end
+            
+        end
+        
+        function obj = isfreadSetup(obj,setupText)
+            
+           
+            % Get parameter values
+            obj.gain = obj.getSetupValues(setupText,'PROBE:GAIN');
+            obj.forcedRange = obj.getSetupValues(setupText,'PROBE:FORCEDRANGE');
+            obj.propagationDelay = obj.getSetupValues(setupText,'PROBE:PROPDELAY'); % propagation delay of probe (doesn't adjust the data). 
+            obj.invert = obj.getSetupValues(setupText,'INVERT');
+            obj.deskew = obj.getSetupValues(setupText,'DESKEW'); % Time that signal is shifted in time.
+            obj.bandwidth = obj.getSetupValues(setupText,'BANDWIDTH');
+            obj.coupling = obj.getSetupParameterString(setupText,'COUPLING');
+            obj.offset = obj.getSetupValues(setupText,'OFFSET');
+            obj.position = obj.getSetupValues(setupText,'POSITION');
+            obj.scale = obj.getSetupValues(setupText,'SCALE');
+            obj.termination = obj.getSetupValues(setupText,'TERMINATION');
+            obj.label = obj.getSetupParameterString(setupText,'LABEL');     
+            
+            % Processing
+            if obj.deskew ~= 0
+                warn( [obj.name ': A deskew of ' num2str(obj.deskew) ' s is configured inside the scope. The signal in MATLAB is already shifted with this time'])
+            end          
+        end
+        
+    end
+    
+    methods (Access = private)
+        function value = getSetupValues(obj,setupText,parameter)
+            regChannel = ['\w*:' upper(obj.name) ':\w*'];
+            parameterString = regexp(setupText,[regChannel parameter '[^\n\r]+'],'match');
+            value = str2double(extractAfter(parameterString,' '));
+        end
+        function value = getSetupParameterString(obj,setupText,parameter)
+            regChannel = ['\w*:' upper(obj.name) ':\w*'];
+            parameterString = regexp(setupText,[regChannel parameter '[^\n\r]+'],'match');
+            value = string(extractAfter(parameterString,' '));
+        end
     end
   
     methods (Static)
+      
+        
         function obj = isfreadSignal(scopeObj,fileName,fileID,h)
                 BYT_N = str2double(regexp(h, 'BYT_NR?\s+"*(.*?)"*[;:]', 'once', 'tokens'));
                 BIT_N = str2double(regexp(h, 'BIT_NR?\s+"*(.*?)"*[;:]', 'once', 'tokens'));
