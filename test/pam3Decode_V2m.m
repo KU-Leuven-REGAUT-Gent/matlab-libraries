@@ -1,10 +1,92 @@
-cut_off_frequency = 125e6;
-verbose = -1;
-[X,Y] = interpolateTo1GHzAndFilter(scopeObject,cut_off_frequency,0);
-[Xt,Yt] = pam3(scopeObject,X,Y);
+% cut_off_frequency = 125e6;
+% verbose = 1;
+% if(verbose); tic;end
+% [X,Y] = interpolateTo1GHzAndFilter(scopeObject,6,5,cut_off_frequency,0);
+% if(verbose);disp(['Interpolating to 1 GHz and filtering execution time: ' num2str(toc) newline]);end 
+% % X = scopeObject.time;
+% % Y= scopeObject.channels(6).value - scopeObject.channels(5).value;
+% Ytest = Y/max(Y);
+[Xt,Yt] = pam3(scopeObject,X,Ytest,verbose);
+PNchannels =2:3;
+[Ra, Rb] = demultiplexer(Yt);
 
+i=1;
+j=1;
+successiveIndices=0;
+ssdIndex = 1;
+prevIndex = 0;
+threeBit = [];
+ssdIndices = [];
+esdIndices = [];
+index=0;
+while index <numel(Ra)
+    index = index +1;
+    threeBit = [threeBit; twoTernaryToDataSymbol(Ra(index),Rb(index))];
+      
+    checkSSD = isnan(threeBit);
+    if  numel(threeBit)==9 
+        if sum(checkSSD)==9 % SSD code group {00},{00},{00} with 00 replaced by nan,nan,nan
+            ssdIndices(i) = index*2;
+            i=i+1;
+            threeBit = [];
+        elseif sum(checkSSD)==6 && sum(threeBit(end-2:end))==3 % ESD code group {00},{00},{11}
+            esdIndices(j) = index*2;
+            j=j+1;
+            threeBit = [];
+%         elseif sum(checkSSD)==3 && sum(threeBit(4:6))==3 && sum(threeBit(1:3))== 0 % shifted symbol {00},{11},{-1-1}
+%             disp('Symbols shifted');
+%             Ra(2:end)=Ra(1:end-1);
+%             index =1;
+%             j=j+1;
+%             threeBit = [];  
+        end
+    end
+    % Remove the first three bits to keep 9 bits
+    if numel(threeBit)>=9
+        threeBit(1:3)=[];
+    end
+    
+    prevIndex = index;
+end
 
+figure;
+for i= 1 : numel(PNchannels)
+    scopeObject.channels(PNchannels(i)).pn.plot(0,10-(i-1)*3,1,'g');
+end
+hold on
+for i=1 : numel(ssdIndices(1:100))
+    xline(scopeObject.time(Xt(ssdIndices(i))),'c--');
+end
 
+figure
+startIndex = 56200;
+endIndex = 56500;
+plot(X(Xt(startIndex):Xt(endIndex)),Y(Xt(startIndex):Xt(endIndex)))
+hold on
+plot(X(Xt(startIndex:endIndex)),Yt(startIndex:endIndex)/10,'*')
+xline(scopeObject.channels(2).pn(1, 1).time,'g--')
+xline(scopeObject.channels(3).pn(1, 1).time,'g--')
+
+for i=Xt(startIndex:endIndex)
+    xline(X(i));
+end
+
+yline(0.05393,'r')
+yline(-0.057792,'r')
+ylim([-1.1 1.1])
+% hold on
+% for i=1 : numel(esdIndices)
+%     xline(scopeObject.time(Xt(esdIndices(i))),'r--');
+% end
+     
+% findSSD = find(Yt ==[0,0]);
+% indexTa = 1:2:numel(Yt);
+% indexTb = 2:2:numel(Yt);
+% Ta = Yt(indexTa);
+% Tb = Yt(indexTb);
+% findSSD = ismember(Yt,[0 0]);
+% locationSSD = find(findSSD==1);
+% Yt(locationSSD(1)-5:locationSSD(1)+5)
 function [objScope, chNr, threshold, cut_off_frequency, verbose] = splitVarargin(varargin)
     varargin = varargin{1};
     if(numel(varargin) >= 1)
@@ -60,12 +142,12 @@ function [objScope, chNr, threshold, cut_off_frequency, verbose] = splitVarargin
     if(~exist('cut_off_frequency','var'));cut_off_frequency=2*125e6;end
 end
 
-function [adjustedTime,adjustedSignal] = interpolateTo1GHzAndFilter(objScope,cut_off_frequency,verbose)
+function [adjustedTime,adjustedSignal] = interpolateTo1GHzAndFilter(objScope,plusChannel,minChannel,cut_off_frequency,verbose)
 scale=1;
 freq = 8e-9;
 
 X = objScope.time;
-adjustedSignal = objScope.channels(1).value - objScope.channels(2).value;
+adjustedSignal = objScope.channels(plusChannel).value - objScope.channels(minChannel).value;
 
 while objScope.sample_interval > 1e-9
     objScope.sample_length = objScope.sample_length * 2;
@@ -151,8 +233,6 @@ if(verbose)
     figure;
     subplot(4,1,1);
     XT = objScope.time;
-    
-    
     YT = objScope.channels(1).value - objScope.channels(2).value;
     
     hold on;
@@ -166,47 +246,171 @@ clear F Forig Yorig Scale filterfreq;
 clear X expfft
 end
 
-function[ternaryTime, ternaryBit]= pam3(objScope,time, signal)
-
+function[ternarySampleHitIndex, ternarySample]= pam3(objScope,timeScope, signal,verbose)
+    if (verbose);tic; end
     % 100BASE-T1
     Ft = 66.66e6;
-
+    ThresholdCondition = false;
+    percentOnes = 0;
+    percentMinusOnes = 0;
+    posThresholdOffset = 0;
+    negThresholdOffset = 0;
     % calculate threshold indices
-    threshold=max(abs(signal))/5;
-    plusOneIndex = signal>threshold;
-    minusOneIndex = signal<(-threshold);
+    posSignal = nan(1, numel(signal));
+    posSignalIndex = signal >= max(signal)*0.2 & signal <= (max(signal)*0.6);
+    posSignal(posSignalIndex)= signal(posSignalIndex);
+    posPeaks = findpeaks(posSignal);
+    
+    negSignal = nan(1, numel(signal));
+    negSignalIndex = signal<min(signal)*0.1 & signal>=(min(signal)*0.8);
+    negSignal(negSignalIndex)= signal(negSignalIndex);
+    negPeaks = findpeaks(negSignal);
+    
+    
+        Ytest = Y/max(Y);
+    Ydiff = [diff(Ytest),0];
+    Xtest = repelem(Xt,5);
+    Xtest(1:5:end)= Xt-2;
+    Xtest(2:5:end)= Xt-1;
+    Xtest(4:5:end)= Xt+1;
+    Xtest(5:5:end)= Xt+2;
+    
+    
+    while ~ThresholdCondition      
+        % Calculate  thresholds
+        posThreshold = min(posPeaks) + posThresholdOffset; 
+        negThreshold = mean(negPeaks)+ negThresholdOffset;
+  
+        % Search indices of plus and minus ones
+        plusOneIndex = signal >= posThreshold;
+        minusOneIndex = signal <= negThreshold;
 
-    % Differences to detect 1 to -1 and visa versa or to 0. 
-    diffSignal = [0, diff(signal)];
-    DiffThresholdZero = max(abs(diffSignal))/2; 
-    zeroIndex = signal<threshold & signal>-threshold & (diffSignal < DiffThresholdZero & diffSignal > -DiffThresholdZero);
+        % Find zero indices
+%         diffSignal = [0, diff(signal)];
+%         DiffThresholdZero = max(abs(diffSignal))/2; 
+        zeroIndex = signal < posThreshold & signal > negThreshold ; %& (diffSignal < DiffThresholdZero & diffSignal > -DiffThresholdZero)
 
-    % Calculate Ternary bit sample hits
-    lastInd = find(diffSignal<-DiffThresholdZero,1,'first');
-    firstPeakID = lastInd - round((1/Ft)/2/objScope.sample_interval);
-    ternaryTime=time(firstPeakID):(1/Ft):time(end);
+        % decode to ternary bitstream
+        ternaryBit = nan(1,length(signal));
+        ternaryBit(plusOneIndex) = 1;
+        ternaryBit(minusOneIndex) = -1;
+        ternaryBit(zeroIndex) = 0;
 
+        % Calculate Ternary bit on sample hits
+        firstPeakID = find(signal==findpeaks(signal, 'NPeaks',1),1,'first');
 
-    % decode to ternary bits
-    ternaryBit = nan(1,length(signal));
-    ternaryBit(plusOneIndex) = 0.1;
-    ternaryBit(minusOneIndex) = -0.1;
-    ternaryBit(zeroIndex) = 0;
+        ternarySampleHitIndex = timeScope(firstPeakID):(1/Ft):timeScope(end);
+        ternarySampleHitIndex=round(ternarySampleHitIndex./objScope.sample_interval)-1;
+        ternarySample = ternaryBit(ternarySampleHitIndex);
 
-    figure
-    hold on
-    plot(time(1:1000),signal(1:1000))
-    plot(time(1:1000),signal(1:1000))
-    plot(time(1:1000),ternaryBit(1:1000),'*');
-    plot(time(1:1000),diffSignal(1:1000))
-    plot(time(firstPeakID),signal(firstPeakID),'go')
-    for i=1 : find(ternaryTime<= time(1000),1,'last')
-        xline(ternaryTime(i));
+        % calculate distribution
+        symbolLength = numel(ternarySample);
+        amountOfOnes = sum(ternarySample==1);
+        amountOfZeros = sum(ternarySample==0);
+        amountOfMinusOnes = sum(ternarySample==-1);
+        amountOfNaNs = sum(isnan(ternarySample));
+        percentOnes = amountOfOnes/symbolLength*100;
+        percentZeros = amountOfZeros/symbolLength*100;
+        percentMinusOnes = amountOfMinusOnes/symbolLength*100;  
+        
+        if verbose           
+            disp('----- Threshold levels -----')
+            disp(['Positive threshold: '  num2str(posThreshold)])
+            disp(['negative threshold: ' num2str(negThreshold) newline])
+            
+            disp('------ PAM3 information ------');        
+            disp(['# ones: '  num2str(amountOfOnes) ' (' num2str(round(percentOnes,2)) '%)']);
+            disp(['# zeros: '  num2str(amountOfZeros) ' (' num2str(round(percentZeros,2)) '%)']);
+            disp(['# minus ones: ' num2str(amountOfMinusOnes) ' (' num2str(round(percentMinusOnes,2)) '%)']);
+            disp(['# NaN: ' num2str(amountOfNaNs) ' (' num2str(round(amountOfNaNs/symbolLength*100,2)) '%)' newline]);
+        end
+        
+        % check percentages are between 25 and 35 %
+        if  checkPercentage(percentOnes)==0 && checkPercentage(percentMinusOnes)==0 
+            ThresholdCondition = true;
+        else % if not adjust positive and negative threshold independently         
+            % check positive threshold
+            if  checkPercentage(percentOnes)==1
+                posThresholdOffset =  posThresholdOffset + min(posPeaks)*0.1;
+            elseif checkPercentage(percentOnes)==-1
+                posThresholdOffset =  posThresholdOffset - min(posPeaks)*0.1;
+            end
+            
+            % check negative threshold
+            if  checkPercentage(percentMinusOnes)==1
+                negThresholdOffset =  negThresholdOffset  - abs(min(negPeaks))*0.1;
+            elseif checkPercentage(percentMinusOnes)==-1
+                negThresholdOffset =  negThresholdOffset + abs(min(negPeaks))*0.1;
+            end         
+        end   
     end
-    yline(threshold,'--g','+Threshold')
-    yline(-threshold,'--g','-Threshold')
+    
+    if verbose
+        figure
+        plot(timeScope(1:1000),ternaryBit(1:1000))
+        hold on
+        plot(timeScope(1:1000),signal(1:1000),'-o')
+        yline(posThreshold,'--g','+Threshold')
+        yline(negThreshold,'--g','-Threshold')
+
+        figure
+        hold on
+        plot(timeScope(1:4000),signal(1:4000))
+        ternaryPlotSize= sum(timeScope(ternarySampleHitIndex)<=timeScope(4000));
+        plot(timeScope(ternarySampleHitIndex(1:ternaryPlotSize)),ternarySample(1:ternaryPlotSize)/10,'*');
+%         plot(timeScope(1:4000),diffSignal(1:4000))
+        legend('signal','ternary bit','diff signal')
+    %     plot(timeScope(firstPeakID),signal(firstPeakID),'go')
+
+        for i=1 : find(timeScope(ternarySampleHitIndex)<= timeScope(4000),1,'last')
+            xline(timeScope(ternarySampleHitIndex(i)));
+        end
+
+        yline(posThreshold,'--g','+Threshold')
+        yline(negThreshold,'--g','-Threshold')
+   end
+    
+    % local function to check the percentage is between 25 and 35 %
+    function check = checkPercentage(percentage)
+        if percentage >35 
+            check = 1;
+        elseif  percentage <25 
+            check = -1;
+        else
+            check = 0;
+        end
+    end
+
+    clear symbolLength amountOfOnes amountOfZeros amountOfMinusOnes amountOfNaNs firstPeakID ternaryBit
+    if(verbose);disp(['PAM3 execution time: ' num2str(toc) newline]);end      
 end
 
-function twoTernaryToDataSymbols(objScope)
+function[Ra, Rb]= demultiplexer(ternarySample)
+Ra(:) = int16(ternarySample(1:2:(numel(ternarySample)-1)));
+Rb(:) = int16(ternarySample(2:2:numel(ternarySample)));
+end
 
+function ScrambleBits = twoTernaryToDataSymbol(Ra,Rb)
+    switch true
+        case Ra == -1 && Rb == -1 
+            ScrambleBits = [0;0;0];
+        case Ra == -1 && Rb == 0
+            ScrambleBits = [0;0;1];
+        case Ra == -1 && Rb == 1
+            ScrambleBits = [0;1;0];
+        case Ra == 0 && Rb == -1
+            ScrambleBits = [0;1;1];
+        case Ra == 0 && Rb == 0
+            ScrambleBits = [nan;nan;nan];
+        case Ra== 0 && Rb == 1
+            ScrambleBits = [1;0;0];    
+        case Ra == 1 && Rb == -1
+            ScrambleBits = [1;0;1];
+        case Ra == 1 && Rb == 0
+            ScrambleBits = [1;1;0];   
+        case Ra == 1 && Rb == 1
+            ScrambleBits = [1;1;1];    
+        otherwise
+            disp('data symbol mapping failed');
+    end 
 end
