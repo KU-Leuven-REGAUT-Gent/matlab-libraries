@@ -30,14 +30,14 @@ classdef channel < dynamicprops & matlab.mixin.Copyable
             obj.name = name;
         end
         
-        function obj = decodeChannelPN(obj,s,i)
+        function obj = decodeChannelPN(obj,s,i,verbose)
             if   ~isprop(obj,'pn')
                 obj.addprop('pn');
             end
             obj.pn = eth.empty(1,0);
            scopeTemp =  copy(s);
 %            scopeTemp = scopeTemp.copy(s);
-            obj.pn = eth.scoperead(scopeTemp,i,1);
+            obj.pn = eth.scoperead(scopeTemp,i,verbose);
         end
         
         function [freq_axis, fft_result,N] = advancedFFT(obj,scale,window,gatePosition,gateDuration,levelOffset)
@@ -293,10 +293,10 @@ classdef channel < dynamicprops & matlab.mixin.Copyable
         end
         
         function obj = wfmreadSignal(fileName,y,info)
-            if contains(fileName,'Ch')
-                obj = channel( char(strcat('CH' , extractBetween(fileName,'Ch','.wfm'))));    
-            elseif contains(fileName,'Math')
-                obj = channel( char(strcat('Math' , extractBetween(fileName,'Math','.wfm')))); 
+            if contains(lower(fileName),'ch')
+                obj = channel( char(strcat('CH' , extractBetween(lower(fileName),'ch','.wfm'))));    
+            elseif contains(lower(fileName),'math')
+                obj = channel( char(strcat('Math' , extractBetween(lower(fileName),'math','.wfm')))); 
             end
             
                 obj.value = y';

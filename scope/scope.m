@@ -259,7 +259,7 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
             
             ylabel('amplitude');
             for i=2:chSize
-                [freq_axis, fft_result] = obj.channels(i).fft(obj.sample_interval,"","hamming");
+                [freq_axis, fft_result] = obj.channels(i).fft(obj.sample_interval,"db","hamming");
                 subplotArray(i) =subplot(chSize,1,i);                
                 plot(freq_axis, fft_result,'LineWidth',2)
                 subtitle(['Channel ' obj.channels(i).name])
@@ -440,13 +440,13 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
                 case 2
                     ch = varargin{1};
             end
-            verbose = 0;
+            verbose =0;
             % decode the signals in the same order as the ch array.
             for i =1:numel(ch)
                 for j=1: length(obj.channels)
                     if contains(obj.channels(j).name,string(ch(i)))
                         %              obj.pn.(obj.channels(j).name)  = eth.scoperead(obj,j,verbose);
-                        obj.channels(j) = obj.channels(j).decodeChannelPN(obj,j);
+                        obj.channels(j) = obj.channels(j).decodeChannelPN(obj,j,verbose);
                     end
                 end
             end
@@ -881,7 +881,7 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
                 end
                 % create dynamic math property
                 if ~isprop(obj,'math')
-                    obj.addprop('math')
+                    obj.addprop('math');
                 end
                 
                 
@@ -1015,7 +1015,7 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
                 [y, t, info] = wfm2read(fullFileName);
                 
                 if ~isprop(obj,'math')
-                    obj.addprop('math')
+                    obj.addprop('math');
                 end
                 
                 obj.math(s).waveform_type       = info.versioning_number;
