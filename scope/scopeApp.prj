@@ -1,5 +1,5 @@
 <deployment-project plugin="plugin.apptool" plugin-version="1.0">
-  <configuration build-checksum="2701899040" file="F:\Documents\Libraries\MATLAB\matlab-libraries\scope\scopeApp.prj" location="F:\Documents\Libraries\MATLAB\matlab-libraries\scope" name="scopeApp" target="target.mlapps" target-name="Package App">
+  <configuration build-checksum="1804779922" file="F:\Documents\Libraries\MATLAB\matlab-libraries\scope\scopeApp.prj" location="F:\Documents\Libraries\MATLAB\matlab-libraries\scope" name="scopeApp" target="target.mlapps" target-name="Package App">
     <param.appname>scopeApp</param.appname>
     <param.authnamewatermark>Dimitri De Schuyter</param.authnamewatermark>
     <param.email />
@@ -7,12 +7,13 @@
     <param.icon />
     <param.icons />
     <param.summary />
-    <param.description>Busy pointer and fix folder cancel
+    <param.description>Save last used directory path
+Busy pointer and fix folder cancel
 Added FFT
 Added  pn plotting function
 Fix multiple channel profinet decoding
 Fix compatibillity for multiple platforms</param.description>
-    <param.screenshot>C:\Users\Dimitri De Schuyter\AppData\Local\Temp\tp68d38dfe_2c67_4e77_bf70_de621bd2b13c.png</param.screenshot>
+    <param.screenshot>C:\Users\Dimitri De Schuyter\AppData\Local\Temp\tp2b1e1bd0_aa3e_4314_9aa2_b44d50391349.png</param.screenshot>
     <param.version>1.1</param.version>
     <param.products.name />
     <param.products.id />
@@ -35,6 +36,7 @@ Fix compatibillity for multiple platforms</param.description>
       <file>${PROJECT_ROOT}\scopeApp.mlapp</file>
     </fileset.main>
     <fileset.depfun>
+      <file>${MATLAB_ROOT}\toolbox\local\userpath.m</file>
       <file>F:\Documents\Libraries\MATLAB\matlab-libraries\color.m</file>
       <file>F:\Documents\Libraries\MATLAB\matlab-libraries\eth.m</file>
       <file>F:\Documents\Libraries\MATLAB\matlab-libraries\ethPHYdecode.m</file>
