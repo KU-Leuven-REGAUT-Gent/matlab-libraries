@@ -7,6 +7,10 @@
 debug/*
 examples/*
 scope/Old/*
+scope/*.fig
+matlab/*.fig
+matlab/*.png
+SPE/Old
 
 # Compiled source #
 ###################

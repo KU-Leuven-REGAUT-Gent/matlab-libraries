@@ -464,7 +464,7 @@ if nargin>=2
     end
 end
 
-values=double(fread(fid,nop,format,info.num_bytes_per_point*(step-1),byteorder));%#ok %read data values from curve buffer
+values=double(fread(fid,nop,format,info.num_bytes_per_point*(step-1),byteorder));% #ok %read data values from curve buffer
 t = info.id1.dim_offset + info.id1.dim_scale * (startind+(1:step:(nop*step))'-1);
 y = info.ed1.dim_offset + info.ed1.dim_scale *values;  %scale data values to obtain in correct units
 
@@ -481,10 +481,10 @@ info.nop = nop;
 %print warning if there are wrong values because they are lying outside
 %the AD converter digitization window:
 if length(ind_over) %#ok
-    warning('WFM2read:OverRangeValues',[int2str(length(ind_over)), ' over range value(s) in file ' filename]); %#ok
+    warning('WFM2read:OverRangeValues',[int2str(length(ind_over)), ' over range value(s) in file ' filename]); % #ok
 end
 if length(ind_under) %#ok
-    warning('WFM2read:UnderRangeValues',[int2str(length(ind_under)), ' under range value(s) in file ' filename]); %#ok
+    warning('WFM2read:UnderRangeValues',[int2str(length(ind_under)), ' under range value(s) in file ' filename]); % #ok
 end
 
 if (info.N>0) && (nargout==6) %if file contains fast frame data and it is requested as output
