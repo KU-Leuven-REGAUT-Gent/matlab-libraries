@@ -51,8 +51,9 @@
 %  %        offset_x,                                                     %
 %  %        offset_y,                                                     %
 %  %        lineWidth,                                                    %
-%  %        line_color)                                                   %
-%  %                                                                      %
+%  %        line_color,                                                   %
+%  %        packetsToPlot       number of packets to plot                 %
+%  %        startPacketNr)                                                %
 %  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  %                                                                      %
 %  %    VERBOSE MODE: (default=-1)                                        %
@@ -99,21 +100,41 @@ classdef eth < handle
         %     srcMacStr = srcMacStr(1:end-1);
         
         
-        function plot(obj,offset_x,offset_y, lineWidth, line_color)
+        function plot(obj,offset_x,offset_y, lineWidth, line_color,packetsToPlot,startPacketNr)
             %rectangle('Position' , [offset_x+obj(1).time,offset_x+obj(end).time_end],[offset_y,offset_y],'Color','black','LineWidth',lineWidth/10);
             defaultFaceColor = line_color;
             defaultEdgeColor = [0 0 0];
             IFGFaceColor = [0.9 0.9 0.9];
             IFGEdgeColor = [0.6 0.6 0.6];
-            for i=1:length(obj)
+            if isempty(findobj(gcf,'type','legend'))
+                hold on
+                plot(nan,nan,'g') ;
+                plot(nan,nan,'Color',[255 223 223]/255) 
+                plot(nan,nan,'Color',line_color) 
+                legend('PNIO','PN Low Alarm','other')
+                hold off
+            end
+            if ~exist("packetsToPlot") || packetsToPlot > numel(obj)
+                packetsToPlot = numel(obj);
+            end
+            
+            if ~exist("startPacketNr")
+                startPacketNr = 1;
+            end
+            
+            for i=startPacketNr:packetsToPlot
                 FaceColor = defaultFaceColor;
                 EdgeColor = defaultEdgeColor;
                 TimeStart = offset_x+obj(i).time;
                 TimeEnd = offset_x+obj(i).time + (obj(i).packetLen)*8*10e-9;
+                
+                
                 if(obj(i).EthertypeOrLength == '0x8892')
                     if(obj(i).EtherTypeSpecificData.PNIO_FrameID == 'FE01')
                         FaceColor = [255 223 223]/255;
                         EdgeColor = [255 0 0]/255;
+                    elseif(obj(i).EtherTypeSpecificData.PNIO_FrameID == '8010')
+                        FaceColor = 'g';
                     end
                 end
                 %% IFG
@@ -126,6 +147,8 @@ classdef eth < handle
                     'EdgeColor', EdgeColor);
             end
         end
+        
+        
     end
     methods (Static)
         %% FUNCTION - CSV READ
@@ -178,7 +201,7 @@ classdef eth < handle
             
         end
         
-        function obj = pcapread(file,verbose,captureFilter)
+        function pcapPackets = pcapread(file,verbose,captureFilter)
             %% FUNCTION - PCAPNG READ
             % Set tshark correct path to let user use pre-filtering
             % ethObj = eth.csvread(filename, silent_mode)
@@ -363,13 +386,14 @@ classdef eth < handle
                 disp(['This pcap file contains', num2str(simplePacketBlock), 'that are not displayed.']);
             end
             %% Preallocating memory
-            obj = eth.empty(0,packetNum);
+%             obj = eth.empty(0,packetNum);
             % Data from pcap files will present only repeated headers and data
             if ~pcapng
                 data = data (25:end);
             end
             %% Default values below
             idx = 1; byteOrder = 0; packetNum = 1; packetData = [];
+            packetNumPort0=0; packetNumPort1=0;packetNumPort2=0;packetNumPort3=0;
             
             while idx<length(data)
                 if pcapng
@@ -403,7 +427,30 @@ classdef eth < handle
                 if (~pcapng || sum(blockType.*[2^24, 2^16, 2^8, 2^0]) == enhPacketBlock ...
                         || sum(blockType.*[2^24, 2^16, 2^8, 2^0]) == obsoletePacketBlock )
                     %Reading Ethernet information from PCAP or PCAPNG files
-                    obj(packetNum) = eth(packetNum);
+                    % Read the receive port if PCAP is from the Hilscher
+                    % netAnalyzer
+                    if (GlobalHeader.network) ==240
+                        portNr = floor(data(idx+17)/64)+1;
+                        switch portNr
+                            case 1
+                                packetNumPort0=packetNumPort0+1;
+                                packetNum = packetNumPort0;
+                            case 2
+                                packetNumPort1=packetNumPort1+1;
+                                packetNum = packetNumPort1;
+                            case 3
+                                packetNumPort2=packetNumPort2+1;
+                                packetNum = packetNumPort2;
+                            case 4
+                                packetNumPort3=packetNumPort3+1;
+                                packetNum = packetNumPort3;
+                                
+                        end
+                    else 
+                        portNr = 1;
+                    end
+                    
+                    pcapPackets(portNr).packet(packetNum) = eth(packetNum);
                     
                     if pcapng
                         %Extracting information from pcapng
@@ -423,11 +470,13 @@ classdef eth < handle
                             timestampLow = pcapBody(9:12);
                         end
                         
+                        
+                        %% time section
                         if isfield(OptionStruct,'if_tsresol')
-                            obj(packetNum).time = (sum(timestampHigh.*[2^56,2^48,2^40,2^32])+sum(timestampLow.*[2^24,2^16,2^8,2^0]))/10^OptionStruct.if_tsresol;
+                            pcapPackets(portNr).packet(packetNum).time = (sum(timestampHigh.*[2^56,2^48,2^40,2^32])+sum(timestampLow.*[2^24,2^16,2^8,2^0]))/10^OptionStruct.if_tsresol;
                             % obj(packetNum).time = datestr(obj(packetNum).time/86400 + datenum(1970,1,1));
                         else
-                            obj(packetNum).time = (sum(timestampHigh.*[2^56,2^48,2^40,2^32])+sum(timestampLow.*[2^24,2^16,2^8,2^0]))/10^6;
+                            pcapPackets(portNr).packet(packetNum).time = (sum(timestampHigh.*[2^56,2^48,2^40,2^32])+sum(timestampLow.*[2^24,2^16,2^8,2^0]))/10^6;
                             % obj(packetNum).time = datestr(obj(packetNum).time/86400 + datenum(1970,1,1));
                         end
                         %obj(enhPacketNum).time = datestr(sum(blockBody(12:-1:5).*[2^24; 2^16; 2^8, 2^0; 2^56; 2^48; 2^40; 2^32])/86400/10^6 + datenum(1970,1,1));
@@ -445,58 +494,59 @@ classdef eth < handle
                             CapturedLen = data(idx+12:idx+15);
                         end
                         
+                        %% time section
                         if(timestamp_ns)
                             if(packetNum == 1)
                                 StartTimestampSec = TimestampSec;
                                 StartTimestampMicroSec = TimestampMicroSec;
-                                obj(packetNum).time = 0;
+                                pcapPackets(portNr).packet(packetNum).time = 0;
                             else
-                                obj(packetNum).time = (TimestampSec-StartTimestampSec) + ((TimestampMicroSec-StartTimestampMicroSec)*1e-9);
+                                pcapPackets(portNr).packet(packetNum).time = (TimestampSec-StartTimestampSec) + ((TimestampMicroSec-StartTimestampMicroSec)*1e-9);
                             end
                             
                         else
                             if(packetNum == 1)
                                 StartTimestampSec = TimestampSec;
                                 StartTimestampMicroSec = TimestampMicroSec;
-                                obj(packetNum).time = 0;
+                                pcapPackets(portNr).packet(packetNum).time = 0;
                             else
-                                obj(packetNum).time = (TimestampSec-StartTimestampSec) + ((TimestampMicroSec-StartTimestampMicroSec)*1e-6);
+                                pcapPackets(portNr).packet(packetNum).time = (TimestampSec-StartTimestampSec) + ((TimestampMicroSec-StartTimestampMicroSec)*1e-6);
                             end
                         end
                         
                         switch (GlobalHeader.network)
                             case 1
                                 % Normal Ethernet Packet
-                                obj(packetNum).frame.encapsulation_type = 1;
-                                obj(packetNum).frame.encapsulation_desc = 'Ethernet';
+                                pcapPackets(portNr).packet(packetNum).frame.encapsulation_type = 1;
+                                pcapPackets(portNr).packet(packetNum).frame.encapsulation_desc = 'Ethernet';
                                 packetData = data(idx+16:idx+16+SnapshotLength-1);
                             case 240
                                 % netANALYZER
-                                obj(packetNum).frame.encapsulation_type = 135;
-                                obj(packetNum).frame.encapsulation_desc = 'netANALYZER';
-                                obj(packetNum).frame.netANALYZER.Status = data(idx+16);
-                                obj(packetNum).frame.netANALYZER.Reception_Port = floor(data(idx+17)/64);
-                                obj(packetNum).frame.netANALYZER.Ethernet_frame_length = data(idx+18);
-                                obj(packetNum).frame.netANALYZER.Type = mod(data(idx+17),64);
-                                switch(obj(packetNum).frame.netANALYZER.Type)
+                                pcapPackets(portNr).packet(packetNum).frame.encapsulation_type = 135;
+                                pcapPackets(portNr).packet(packetNum).frame.encapsulation_desc = 'netANALYZER';
+                                pcapPackets(portNr).packet(packetNum).frame.netANALYZER.Status = data(idx+16);
+                                pcapPackets(portNr).packet(packetNum).frame.netANALYZER.Reception_Port = floor(data(idx+17)/64);
+                                pcapPackets(portNr).packet(packetNum).frame.netANALYZER.Ethernet_frame_length = data(idx+18);
+                                pcapPackets(portNr).packet(packetNum).frame.netANALYZER.Type = mod(data(idx+17),64);
+                                switch(pcapPackets(portNr).packet(packetNum).frame.netANALYZER.Type)
                                     case 4
                                         packetData = data(idx+20:idx+12+SnapshotLength-1);
-                                        obj(packetNum).CRC = data(idx+12+SnapshotLength:idx+15+SnapshotLength);
+                                        pcapPackets(portNr).packet(packetNum).CRC = data(idx+12+SnapshotLength:idx+15+SnapshotLength);
                                     case 5
-                                        obj(packetNum).frame.netANALYZER.Event_on = data(idx+35);
-                                        obj(packetNum).frame.netANALYZER.Event_type = data(idx+36);
+                                        pcapPackets(portNr).packet(packetNum).frame.netANALYZER.Event_on = data(idx+35);
+                                        pcapPackets(portNr).packet(packetNum).frame.netANALYZER.Event_type = data(idx+36);
                                     otherwise
                                         warn('Unknown netANALYZER Packet Type (GPIO?)');
-                                        obj(packetNum).frame.error = 'Unknown netANALYZER Packet Type (GPIO?)';
+                                        pcapPackets(portNr).packet(packetNum).frame.error = 'Unknown netANALYZER Packet Type (GPIO?)';
                                 end
                             otherwise
                                 warn('Unknown encapsulation');
-                                obj(packetNum).frame.error = 'Unknown encapsulation';
+                                pcapPackets(portNr).packet(packetNum).frame.error = 'Unknown encapsulation';
                         end
                     end
                     if(~isempty(packetData))
-                        obj(packetNum).readByteStream(packetData);
-                        obj(packetNum).time_end = obj(packetNum).time + obj(packetNum).packetLen*8*10e-9;
+                        pcapPackets(portNr).packet(packetNum).readByteStream(packetData);
+                        pcapPackets(portNr).packet(packetNum).time_end = pcapPackets(portNr).packet(packetNum).time + pcapPackets(portNr).packet(packetNum).packetLen*8*10e-9;
                     end
                     packetData = [];
                     packetNum = packetNum + 1;

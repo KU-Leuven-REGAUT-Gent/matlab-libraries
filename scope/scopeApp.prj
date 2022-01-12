@@ -1,5 +1,5 @@
 <deployment-project plugin="plugin.apptool" plugin-version="1.0">
-  <configuration build-checksum="2308594754" file="F:\Documents\Libraries\MATLAB\matlab-libraries\scope\scopeApp.prj" location="F:\Documents\Libraries\MATLAB\matlab-libraries\scope" name="scopeApp" target="target.mlapps" target-name="Package App">
+  <configuration build-checksum="1952165014" file="F:\Documents\Libraries\MATLAB\matlab-libraries\scope\scopeApp.prj" location="F:\Documents\Libraries\MATLAB\matlab-libraries\scope" name="scopeApp" target="target.mlapps" target-name="Package App">
     <param.appname>scopeApp</param.appname>
     <param.authnamewatermark>Dimitri De Schuyter</param.authnamewatermark>
     <param.email />
@@ -7,14 +7,15 @@
     <param.icon />
     <param.icons />
     <param.summary />
-    <param.description>Save last used directory path
+    <param.description>Added pcap read into the app and adjusted ethernet plot
+Save last used directory path
 Busy pointer and fix folder cancel
 Added FFT
 Added  pn plotting function
 Fix multiple channel profinet decoding
 Fix compatibillity for multiple platforms</param.description>
-    <param.screenshot>C:\Users\Dimitri De Schuyter\AppData\Local\Temp\tp162822d7_6cda_4942_b0b3_c85eeebf4cb2.png</param.screenshot>
-    <param.version>1.1</param.version>
+    <param.screenshot>C:\Users\Dimitri De Schuyter\AppData\Local\Temp\tp6268e1a4_151d_4dfc_94ff_0bb35fe03f1b.png</param.screenshot>
+    <param.version>1.2</param.version>
     <param.products.name />
     <param.products.id />
     <param.products.version />

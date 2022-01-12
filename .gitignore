@@ -19,3 +19,5 @@ SPE/Old
 # VS Code files 
 .vs
 *.code-workspace
+scope/slprj/*
+/test/*
