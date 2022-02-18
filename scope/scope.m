@@ -283,6 +283,9 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
             % Declaration and initialisation of the titles, ylabels and
             % channels variables
             [ch, xLimits, savePlot, saveName, titles] = scope.splitVarargin(varargin);
+            if isempty(ch)
+                ch = str2double(extractAfter({obj.channels.name},'Ch')');
+            end
             saveName = strcat(saveName,'_channels');
             chSize = numel(ch);
             chScope= figure('name',['scope plot measurement ' obj.fileName ]);
@@ -689,7 +692,9 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
                 end
             end
             
-            
+            if(~exist('ch','var'))
+                ch = [];
+            end
             if(~exist('saveName','var'))
                 saveName = [];
                 savePlot = false;
@@ -712,7 +717,7 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
                 folder = file;
                 % Get a list of all files that have the extension '.isf' or '.ISF'.
                 files = [ dir(fullfile(folder, '*.isf')) ];
-            elseif appIndex==0
+            elseif  isempty(appIndex) || appIndex==0
                 % The pattern is not a folder, so must be a file name or a pattern with
                 % wildcards (such as 'Traces/TEK0*.ISF').
                 [folder, ~, ~] = fileparts(file);
@@ -721,7 +726,7 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
                 % ...then exclude the folders, to get just a list of files.
                 files = filesAndFolders(~[filesAndFolders.isdir]);
             end
-            if isempty(appIndex) || appIndex==0
+            if (isempty(appIndex) || appIndex==0)
                 fileNames = {files.name};
                 datetimes = datestr([files.datenum]);
             end
@@ -737,14 +742,27 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
                 obj.fileName = extractBefore(file{1},'CH');
             elseif numel(fileNames)==0
                 error('The pattern did not match any file or files: %s', file);
-            elseif numel(fileNames) >1 &&  contains(input('Extract one measurement: ','s'),["y","Y","yes","j","ja"])
-                fileInDir(:,2) = fileNames';
-                fileInDir(:,1)= num2cell(1:numel(fileNames))';
-                table(fileInDir)
-                fileNr =input('Measurement ID: ');
-                fName = extractBefore(fileInDir(fileNr,2),'CH');
-                fileIDs=~cellfun('isempty',regexp(fileNames,fName));
-                fileNames= fileNames(fileIDs);
+            elseif numel(fileNames) >1
+                if contains(input('Extract one measurement: ','s'),["y","Y","yes","j","ja"])
+                    fileInDir(:,2) = fileNames';
+                    fileInDir(:,1)= num2cell(1:numel(fileNames))';
+                    table(fileInDir)
+                    fileNr =input('Measurement ID: ');
+                    fName = extractBefore(fileInDir(fileNr,2),'CH');
+                    fileIDs=~cellfun('isempty',regexp(fileNames,fName));
+                    fileNames= fileNames(fileIDs);
+                    chNames = fileNames(~cellfun('isempty',(regexp(fileNames,'tek[0-9]*CH'))));
+                    mthNames = fileNames(~cellfun('isempty',(regexp(fileNames,'tek[0-9]*MTH'))));
+                    obj.fileName = fName{1};
+                else
+                    warning('Returning empty scope object')
+                    return;
+                end
+            elseif numel(fileNames) ==1
+                fName = extractBefore(fileNames,'CH');
+                if isempty(fName)
+                   fName = extractBefore(fileNames,'MTH'); 
+                end
                 chNames = fileNames(~cellfun('isempty',(regexp(fileNames,'tek[0-9]*CH'))))
                 mthNames = fileNames(~cellfun('isempty',(regexp(fileNames,'tek[0-9]*MTH'))))
                 obj.fileName = fName{1};

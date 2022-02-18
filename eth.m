@@ -109,9 +109,10 @@ classdef eth < handle
             if isempty(findobj(gcf,'type','legend'))
                 hold on
                 plot(nan,nan,'g') ;
-                plot(nan,nan,'Color',[255 223 223]/255) 
+                plot(nan,nan,'Color',[0.9290, 0.6940, 0.1250]) 
+                plot(nan,nan,'Color',[1, 0, 0]) 
                 plot(nan,nan,'Color',line_color) 
-                legend('PNIO','PN Low Alarm','other')
+                legend('PNIO','PN Low Alarm','PN High Alarm','other')
                 hold off
             end
             if ~exist("packetsToPlot") || packetsToPlot > numel(obj)
@@ -130,11 +131,15 @@ classdef eth < handle
                 
                 
                 if(obj(i).EthertypeOrLength == '0x8892')
-                    if(obj(i).EtherTypeSpecificData.PNIO_FrameID == 'FE01')
-                        FaceColor = [255 223 223]/255;
-                        EdgeColor = [255 0 0]/255;
-                    elseif(obj(i).EtherTypeSpecificData.PNIO_FrameID == '8010')
+                    frameID= str2num(['0x' obj(i).EtherTypeSpecificData.PNIO_FrameID]);
+                    if(frameID >= 0x8000 && frameID <= 0xBFFF ) 
                         FaceColor = 'g';
+                    elseif(frameID == 0xFE01) % ALARM Low
+                        FaceColor = [0.9290, 0.6940, 0.1250]; % Yellow
+                        EdgeColor = [255 0 0]/255;
+                    elseif(frameID == 0xFC01) % ALARM High
+                        FaceColor = [1, 0, 0]; % Red
+                        EdgeColor = [255 0 0]/255;
                     end
                 end
                 %% IFG
