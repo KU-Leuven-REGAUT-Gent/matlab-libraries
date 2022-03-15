@@ -66,7 +66,7 @@
 %  %                                                                      %
 %  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-classdef eth < handle
+classdef eth < handle & dynamicprops
     properties
         packetNum
         packetLen
@@ -86,6 +86,8 @@ classdef eth < handle
         phy_signal
         time_end
         ethertype
+        utcTime
+        correctionTime
     end
     methods
         function obj = eth(num)
@@ -325,6 +327,7 @@ classdef eth < handle
                         else
                             if(verbose);disp('No endian');end
                         end
+%                         sectionLength=sum(data(idx+16:idx+23).*[2^24,2^16,2^8,2^0])
                     elseif sum(blockType.*[2^24,2^16,2^8,2^0]) == simplePacketBlock
                         simplePacketBlockNum=simplePacketBlockNum+1;
                         if(verbose);disp(['Simple Packet Block: ' num2str(packetNum)]);end
@@ -394,12 +397,12 @@ classdef eth < handle
 %             obj = eth.empty(0,packetNum);
             % Data from pcap files will present only repeated headers and data
             if ~pcapng
-                data = data (25:end);
+                data = data (25:end);                
             end
             %% Default values below
             idx = 1; byteOrder = 0; packetNum = 1; packetData = [];
-            packetNumPort0=0; packetNumPort1=0;packetNumPort2=0;packetNumPort3=0;
-            
+            packetNumPort = zeros(8,1);
+            firstRun = true;
             while idx<length(data)
                 if pcapng
                     blockType = data(idx:idx+3);
@@ -434,28 +437,13 @@ classdef eth < handle
                     %Reading Ethernet information from PCAP or PCAPNG files
                     % Read the receive port if PCAP is from the Hilscher
                     % netAnalyzer
-                    if (GlobalHeader.network) ==240
+                    if ~pcapng && (GlobalHeader.network) ==240
                         portNr = floor(data(idx+17)/64)+1;
-                        switch portNr
-                            case 1
-                                packetNumPort0=packetNumPort0+1;
-                                packetNum = packetNumPort0;
-                            case 2
-                                packetNumPort1=packetNumPort1+1;
-                                packetNum = packetNumPort1;
-                            case 3
-                                packetNumPort2=packetNumPort2+1;
-                                packetNum = packetNumPort2;
-                            case 4
-                                packetNumPort3=packetNumPort3+1;
-                                packetNum = packetNumPort3;
-                                
-                        end
+                        packetNumPort(portNr)=packetNumPort(portNr)+1;
+                        packetNum = packetNumPort(portNr);                           
                     else 
                         portNr = 1;
                     end
-                    
-                    pcapPackets(portNr).packet(packetNum) = eth(packetNum);
                     
                     if pcapng
                         %Extracting information from pcapng
@@ -464,6 +452,8 @@ classdef eth < handle
                             packetLen = pcapBody(20:-1:17);
                             dataLength = sum(capturedLen.*[2^24,2^16,2^8,2^0]);
                             packetData = pcapBody(21:21+dataLength-1);
+                            interfaceID = sum(pcapBody(4:-1:1).*[2^24,2^16,2^8,2^0]);
+                            portNr = interfaceID+1;
                             timestampHigh = pcapBody(8:-1:5);
                             timestampLow = pcapBody(12:-1:9);
                         else
@@ -471,20 +461,42 @@ classdef eth < handle
                             packetLen = pcapBody(17:20);
                             dataLength = sum(capturedLen.*[2^24,2^16,2^8,2^0]);
                             packetData = pcapBody(21:21+dataLength-1);
+                            interfaceID = sum(pcapBody(1:4).*[2^24,2^16,2^8,2^0]);
+                            portNr = interfaceID+1;
                             timestampHigh = pcapBody(5:8);
                             timestampLow = pcapBody(9:12);
                         end
-                        
-                        
+                        packetNumPort(portNr)=packetNumPort(portNr)+1;
+                        packetNum = packetNumPort(portNr);       
+                    end  
+                    pcapPackets(portNr).packet(packetNum) = eth(packetNum);
+                    if pcapng   
                         %% time section
                         if isfield(OptionStruct,'if_tsresol')
                             pcapPackets(portNr).packet(packetNum).time = (sum(timestampHigh.*[2^56,2^48,2^40,2^32])+sum(timestampLow.*[2^24,2^16,2^8,2^0]))/10^OptionStruct.if_tsresol;
+                            pcapPackets(portNr).packet(packetNum).utcTime =datetime(pcapPackets(portNr).packet(packetNum).time,'ConvertFrom','posixTime','TimeZone','local','Format','dd-MMM-yyyy HH:mm:ss.SSSSSS');
+                             if firstRun
+                                StartTimestampMicroSec = pcapPackets(portNr).packet(packetNum).time;
+                                pcapPackets(portNr).packet(packetNum).time = 0;
+                                firstRun = false;
+                            else
+                                pcapPackets(portNr).packet(packetNum).time = round(pcapPackets(portNr).packet(packetNum).time  -StartTimestampMicroSec,OptionStruct.if_tsresol);
+                            end
+                            
+                            %                             pcapPackets(portNr).packet(packetNum).time = pcapPackets(portNr).packet(packetNum).time-convertTo(pcapPackets(portNr).packet(1).utcTime,'posixtime','TimeZone','local');
                             % obj(packetNum).time = datestr(obj(packetNum).time/86400 + datenum(1970,1,1));
                         else
                             pcapPackets(portNr).packet(packetNum).time = (sum(timestampHigh.*[2^56,2^48,2^40,2^32])+sum(timestampLow.*[2^24,2^16,2^8,2^0]))/10^6;
+                            pcapPackets(portNr).packet(packetNum).utcTime =datetime(pcapPackets(portNr).packet(packetNum).time,'ConvertFrom','posixTime','TimeZone','local','Format','dd-MMM-yyyy HH:mm:ss.SSSSSSSSS');
+                            pcapPackets(portNr).packet(packetNum).time = pcapPackets(portNr).packet(packetNum).time-convertTo(pcapPackets(portNr).packet(1).utcTime,'posixtime','TimeZone','local');
                             % obj(packetNum).time = datestr(obj(packetNum).time/86400 + datenum(1970,1,1));
                         end
                         %obj(enhPacketNum).time = datestr(sum(blockBody(12:-1:5).*[2^24; 2^16; 2^8, 2^0; 2^56; 2^48; 2^40; 2^32])/86400/10^6 + datenum(1970,1,1));
+                        pcapPackets(portNr).packet(packetNum).frame.interfaceID = interfaceID; 
+                        if contains(OptionStruct.if_name,'banyagent')
+                            pcapPackets(portNr).packet(packetNum).frame.interfaceName = strcat(extractBefore(OptionStruct.if_name,'#'),'#', string(interfaceID));
+                            pcapPackets(portNr).packet(packetNum).frame.encapsulation_desc = extractBefore(OptionStruct.if_name,'_#');
+                        end
                     else
                         %Extracting information from pcap
                         if byteOrder == 0
@@ -501,19 +513,21 @@ classdef eth < handle
                         
                         %% time section
                         if(timestamp_ns)
-                            if(packetNum == 1)
+                            if firstRun
                                 StartTimestampSec = TimestampSec;
                                 StartTimestampMicroSec = TimestampMicroSec;
                                 pcapPackets(portNr).packet(packetNum).time = 0;
+                                firstRun = false;
                             else
                                 pcapPackets(portNr).packet(packetNum).time = (TimestampSec-StartTimestampSec) + ((TimestampMicroSec-StartTimestampMicroSec)*1e-9);
                             end
                             
                         else
-                            if(packetNum == 1)
+                            if firstRun
                                 StartTimestampSec = TimestampSec;
                                 StartTimestampMicroSec = TimestampMicroSec;
                                 pcapPackets(portNr).packet(packetNum).time = 0;
+                                firstRun = false;
                             else
                                 pcapPackets(portNr).packet(packetNum).time = (TimestampSec-StartTimestampSec) + ((TimestampMicroSec-StartTimestampMicroSec)*1e-6);
                             end
@@ -530,7 +544,7 @@ classdef eth < handle
                                 pcapPackets(portNr).packet(packetNum).frame.encapsulation_type = 135;
                                 pcapPackets(portNr).packet(packetNum).frame.encapsulation_desc = 'netANALYZER';
                                 pcapPackets(portNr).packet(packetNum).frame.netANALYZER.Status = data(idx+16);
-                                pcapPackets(portNr).packet(packetNum).frame.netANALYZER.Reception_Port = floor(data(idx+17)/64);
+                                pcapPackets(portNr).packet(packetNum).frame.netANALYZER.Reception_Port = portNr-1;%floor(data(idx+17)/64);
                                 pcapPackets(portNr).packet(packetNum).frame.netANALYZER.Ethernet_frame_length = data(idx+18);
                                 pcapPackets(portNr).packet(packetNum).frame.netANALYZER.Type = mod(data(idx+17),64);
                                 switch(pcapPackets(portNr).packet(packetNum).frame.netANALYZER.Type)
@@ -1141,6 +1155,7 @@ classdef eth < handle
             EtherTypeIP = [8,0]; % 0x0800
             EtherTypeARP = [8,6]; % 0x0806
             EtherTypeHSR = [137,47]; % 0x892F
+            EtherTypeCB = [241,193];
             
             % Creating an eth object
             obj.dstMac = packetData(1:6);
@@ -1187,6 +1202,19 @@ classdef eth < handle
                     PNIO_FrameIDHex = dec2hex(packetData(15:16),2);
                     obj.EtherTypeSpecificData.PNIO_FrameID = sscanf(PNIO_FrameIDHex','%c');
                     obj.APDU = packetData(15:end);
+                    % Comparing FrameID
+                    obj.setFrameID(FrameID, obj.APDU);
+                elseif isequal(packetData(13:14),EtherTypeCB)
+                    obj.addprop('CB_Redundancy_Tag');
+                    obj.CB_Redundancy_Tag.seq = sum(packetData(17:18).*[2^8, 2^0]);
+                    obj.CB_Redundancy_Tag.type = ['0x' dec2hex(sum(packetData(19:20).*[2^8, 2^0]))];
+                    obj.ethertype =sum(packetData(19:20).*[2^8, 2^0]);
+                    EtherTypeHex = dec2hex(obj.ethertype,4);
+                    obj.EthertypeOrLength = ['0x' EtherTypeHex];
+                     FrameID = sum(packetData(21:22).*[2^8, 2^0]);
+                    PNIO_FrameIDHex = dec2hex(packetData(21:22),2);
+                    obj.EtherTypeSpecificData.PNIO_FrameID = sscanf(PNIO_FrameIDHex','%c');
+                    obj.APDU = packetData(21:end);
                     % Comparing FrameID
                     obj.setFrameID(FrameID, obj.APDU);
                 elseif isequal(packetData(13:14),EtherTypeIP)
@@ -1265,6 +1293,15 @@ classdef eth < handle
             end
         end
         
+        function delayCorrection(obj,correctionTime)
+           for i= 1:length(obj)
+               if isempty(obj(i).correctionTime)
+                obj(i).time = obj(i).time - correctionTime;
+                obj(i).correctionTime = correctionTime;
+               end
+           end
+        end
+        
         function copyPhysicalSignal(obj,objScope,chNr)
             
             for i = 1: numel(obj)
@@ -1273,6 +1310,71 @@ classdef eth < handle
                 obj(i).phy_signal = objScope.channels(chNr).value(packetCycles);
             end
         end
+        
+        function packetsPort = getPacketsFromReceptionPort(obj,receptionPort)
+            packetPortIDs = [obj.frame];
+            if isfield(packetPortIDs,'interfaceID')
+                packetPortIDs = ismember([packetPortIDs.interfaceID], receptionPort);
+            else
+                packetPortIDs = ismember(arrayfun(@(S) S.netANALYZER.Reception_Port,packetPortIDs) ,receptionPort);
+            end
+            packetsPort = obj(packetPortIDs);
+        end
+
+        function packetLen = get.packetLen(obj)
+            IPGlength = 12;
+            packetLen = [ obj.packetLen] + IPGlength;
+        end
+        function obj = sortPackets(obj)
+            [~, sortedIDs] = sort([obj.time]);
+            obj = obj(sortedIDs);
+        end
+        function specificPackets = getSpecificPackets(obj, etherType)
+            
+            specificPackets = obj(ismember({obj.EthertypeOrLength} ,etherType));
+        end
+        function cycleCounter = findEqualPackets(obj,packets)
+          
+            if strcmp(packets(1, 1).EthertypeOrLength, '0x8892')
+                tempObj = [obj.EtherTypeSpecificData];
+                objETspecData.cycleCounter = [tempObj.PNIO_CycleCounter];
+                objETspecData.userData = [tempObj.PNIO_UserData];
+                objETspecData.time = [obj.time];
+                clear tempObj
+
+                tempPacket = [packets.EtherTypeSpecificData];
+                packetsETspecData.cycleCounter = [tempPacket.PNIO_CycleCounter];
+                packetsETspecData.userData = [tempPacket.PNIO_UserData];
+                packetsETspecData.time = [packets.time];
+                clear tempPacket
+
+
+
+    %             identicalPacketID = cell2mat(arrayfun(@(X) find(X.cycleCounter==[packetsETspecData.cycleCounter]) ,objETspecData ,'UniformOutput' ,false));
+    %             abs(packetsETspecData.time(identicalPacketID) - objETspecData.time) <2 &  abs(packetsETspecData.time(identicalPacketID) - objETspecData.time) >0;
+
+
+                for i = 1:length(obj)
+                    for j = find(obj(i).EtherTypeSpecificData.PNIO_CycleCounter == [packetsETspecData.cycleCounter])
+                        timeDiff = abs([packets(j).time] -obj(i).time);
+                        if timeDiff <2 && timeDiff >=0
+                            cycleCounter(i).side1 = obj(i);
+                            cycleCounter(i).side2 = packets(j);
+                            break
+                        end
+                    end
+                    if exist('cycleCounter')  && numel(cycleCounter) < i
+                        warning("Missing cyclecounter")
+                    end
+                end
+            else
+                cycleCounter = [];
+            end
+
+        end
+%         function sizeArray = size(obj)
+%             sizeArray = size(obj);
+%         end
     end
     methods (Access = private)
         function setFrameID (obj, FrameID, APDU)
@@ -1303,11 +1405,11 @@ classdef eth < handle
                 obj.packetDesc = 'PN Cyclic time synchronisation';
             elseif FrameID <= 49151
                 PNIO_FrameIDHex = dec2hex(APDU(1:2),2);
-                PNIO_CycleCounter = sum(APDU(end-7:end-6).*[2^8, 2^0]);
+                PNIO_CycleCounter = sum(APDU(end-3:end-2).*[2^8, 2^0]);
                 obj.EtherTypeSpecificData.PNIO = true;
                 obj.EtherTypeSpecificData.PNIO_FrameID = sscanf(PNIO_FrameIDHex','%c');
                 obj.EtherTypeSpecificData.PNIO_CycleCounter = PNIO_CycleCounter;
-                obj.EtherTypeSpecificData.PNIO_TransferStatus = APDU(end-4);
+                obj.EtherTypeSpecificData.PNIO_TransferStatus = APDU(end);
                 obj.EtherTypeSpecificData.PNIO_UserData = APDU(3:end-4);
                 obj.EtherTypeSpecificData.PNIO_DataStatus = dec2bin(APDU(end-1),8);
                 if FrameID <= 32767

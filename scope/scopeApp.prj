@@ -1,5 +1,5 @@
 <deployment-project plugin="plugin.apptool" plugin-version="1.0">
-  <configuration build-checksum="2050488660" file="F:\Documents\Libraries\MATLAB\matlab-libraries\scope\scopeApp.prj" location="F:\Documents\Libraries\MATLAB\matlab-libraries\scope" name="scopeApp" target="target.mlapps" target-name="Package App">
+  <configuration build-checksum="3640853987" file="F:\Documents\Libraries\MATLAB\matlab-libraries\scope\scopeApp.prj" location="F:\Documents\Libraries\MATLAB\matlab-libraries\scope" name="scopeApp" target="target.mlapps" target-name="Package App">
     <param.appname>scopeApp</param.appname>
     <param.authnamewatermark>Dimitri De Schuyter</param.authnamewatermark>
     <param.email />
@@ -7,7 +7,8 @@
     <param.icon />
     <param.icons />
     <param.summary />
-    <param.description>Fixed isfread from command window
+    <param.description>Add button for analyzing eth packets
+Fixed isfread from command window
 Added pcap read into the app and adjusted ethernet plot
 Save last used directory path
 Busy pointer and fix folder cancel
@@ -15,8 +16,8 @@ Added FFT
 Added  pn plotting function
 Fix multiple channel profinet decoding
 Fix compatibillity for multiple platforms</param.description>
-    <param.screenshot>C:\Users\Dimitri De Schuyter\AppData\Local\Temp\tpc7ef1ea7_bc6f_48d7_ab58_d0713b51fdce.png</param.screenshot>
-    <param.version>1.2</param.version>
+    <param.screenshot>C:\Users\Dimitri De Schuyter\AppData\Local\Temp\tp7fe055e7_27b0_4cfe_986d_38e527429a2e.png</param.screenshot>
+    <param.version>1.3</param.version>
     <param.products.name />
     <param.products.id />
     <param.products.version />
@@ -44,6 +45,11 @@ Fix compatibillity for multiple platforms</param.description>
       <file>F:\Documents\Libraries\MATLAB\matlab-libraries\ethPHYdecode.m</file>
       <file>F:\Documents\Libraries\MATLAB\matlab-libraries\logo's\CINI4.0_1920.png</file>
       <file>F:\Documents\Libraries\MATLAB\matlab-libraries\logo's\KULEUVEN_CMYK_LOGO.png</file>
+      <file>F:\Documents\Libraries\MATLAB\matlab-libraries\networkAnalyzer\AR.m</file>
+      <file>F:\Documents\Libraries\MATLAB\matlab-libraries\networkAnalyzer\DeviceOverview.xlsx</file>
+      <file>F:\Documents\Libraries\MATLAB\matlab-libraries\networkAnalyzer\networkAnalyzer.mlapp</file>
+      <file>F:\Documents\Libraries\MATLAB\matlab-libraries\networkAnalyzer\NetworkDevice.m</file>
+      <file>F:\Documents\Libraries\MATLAB\matlab-libraries\networkAnalyzer\Port.m</file>
       <file>F:\Documents\Libraries\MATLAB\matlab-libraries\plt.m</file>
       <file>F:\Documents\Libraries\MATLAB\matlab-libraries\pltColor.m</file>
       <file>${PROJECT_ROOT}\channel.m</file>
