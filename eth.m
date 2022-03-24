@@ -105,7 +105,7 @@ classdef eth < handle & dynamicprops
         function plot(obj,offset_x,offset_y, lineWidth, line_color,packetsToPlot,startPacketNr)
             %rectangle('Position' , [offset_x+obj(1).time,offset_x+obj(end).time_end],[offset_y,offset_y],'Color','black','LineWidth',lineWidth/10);
             defaultFaceColor = line_color;
-            defaultEdgeColor = [0 0 0];
+            defaultEdgeColor = line_color;
             IFGFaceColor = [0.9 0.9 0.9];
             IFGEdgeColor = [0.6 0.6 0.6];
             if isempty(findobj(gcf,'type','legend'))
@@ -136,6 +136,7 @@ classdef eth < handle & dynamicprops
                     frameID= str2num(['0x' obj(i).EtherTypeSpecificData.PNIO_FrameID]);
                     if(frameID >= 0x8000 && frameID <= 0xBFFF ) 
                         FaceColor = 'g';
+                        EdgeColor = [0 0.5 0];
                     elseif(frameID == 0xFE01) % ALARM Low
                         FaceColor = [0.9290, 0.6940, 0.1250]; % Yellow
                         EdgeColor = [255 0 0]/255;
@@ -496,6 +497,9 @@ classdef eth < handle & dynamicprops
                         if contains(OptionStruct.if_name,'banyagent')
                             pcapPackets(portNr).packet(packetNum).frame.interfaceName = strcat(extractBefore(OptionStruct.if_name,'#'),'#', string(interfaceID));
                             pcapPackets(portNr).packet(packetNum).frame.encapsulation_desc = extractBefore(OptionStruct.if_name,'_#');
+                        elseif contains(OptionStruct.if_name,'Allegro')
+                            pcapPackets(portNr).packet(packetNum).frame.interfaceName = strcat(extractBefore(OptionStruct.if_name,' interface'),' ',string(interfaceID));
+                            pcapPackets(portNr).packet(packetNum).frame.encapsulation_desc = extractBefore(OptionStruct.if_name,' interface');
                         end
                     else
                         %Extracting information from pcap
@@ -1155,6 +1159,7 @@ classdef eth < handle & dynamicprops
             EtherTypeIP = [8,0]; % 0x0800
             EtherTypeARP = [8,6]; % 0x0806
             EtherTypeHSR = [137,47]; % 0x892F
+            EtherTypeMRP = [136,227]; % 0x88E3
             EtherTypeCB = [241,193];
             
             % Creating an eth object
@@ -1201,9 +1206,56 @@ classdef eth < handle & dynamicprops
                     FrameID = sum(packetData(15:16).*[2^8, 2^0]);
                     PNIO_FrameIDHex = dec2hex(packetData(15:16),2);
                     obj.EtherTypeSpecificData.PNIO_FrameID = sscanf(PNIO_FrameIDHex','%c');
+                    obj.EtherTypeSpecificData.PNIO = [];
+                    obj.EtherTypeSpecificData.PNIO_CycleCounter = [];
+                    obj.EtherTypeSpecificData.PNIO_TransferStatus = [];
+                    obj.EtherTypeSpecificData.PNIO_UserData = [];
+                    obj.EtherTypeSpecificData.PNIO_DataStatus = [];
                     obj.APDU = packetData(15:end);
                     % Comparing FrameID
                     obj.setFrameID(FrameID, obj.APDU);
+                elseif isequal(packetData(13:14),EtherTypeMRP)
+                    obj.EtherTypeSpecificData.MRP.version = sum(packetData(15:16).*[2^8, 2^0]);
+                    obj.EtherTypeSpecificData.MRP.TLVHeader.Type = ['0x' dec2hex(packetData(17),2)];
+                    switch obj.EtherTypeSpecificData.MRP.TLVHeader.Type
+                        case '0x02'
+                            obj.EtherTypeSpecificData.MRP.TLVHeader.Type = ['MRP test (' obj.EtherTypeSpecificData.MRP.TLVHeader.Type ')'];
+                            obj.EtherTypeSpecificData.MRP.TLVHeader.Length =  packetData(18);
+                            obj.EtherTypeSpecificData.MRP.TLVHeader.Prio =  ['0x' dec2hex(sum(packetData(19:20).*[2^8, 2^0]),4)];
+                            obj.EtherTypeSpecificData.MRP.TLVHeader.SA = packetData(21:26);
+                            if sum(packetData(27:28).*[2^8, 2^0]) == 0
+                                obj.EtherTypeSpecificData.MRP.TLVHeader.PortRole = 'Primary ring port (0x0000)';
+                            elseif sum(packetData(27:28).*[2^8, 2^0]) == 1
+                                obj.EtherTypeSpecificData.MRP.TLVHeader.PortRole = 'secondary ring port (0x0001)';
+                            end
+                            if sum(packetData(29:30).*[2^8, 2^0]) == 0
+                                obj.EtherTypeSpecificData.MRP.TLVHeader.RingState = 'Ring open (0x0000)';
+                            elseif sum(packetData(29:30).*[2^8, 2^0]) == 1
+                                obj.EtherTypeSpecificData.MRP.TLVHeader.RingState = 'Ring closed (0x0001)';
+                            end
+                            obj.EtherTypeSpecificData.MRP.TLVHeader.Transition =  ['0x' dec2hex(sum(packetData(31:32).*[2^8, 2^0]),4)];
+                            obj.EtherTypeSpecificData.MRP.TLVHeader.Timestamp =  ['0x' dec2hex(sum(packetData(33:36).*[2^24,2^16,2^8, 2^0]),4)];
+                        case '0x03'
+                            obj.EtherTypeSpecificData.MRP.TLVHeader.Type = ['MRP TopologyChange (' obj.EtherTypeSpecificData.MRP.TLVHeader.Type ')'];
+                        case '0x04' 
+                            obj.EtherTypeSpecificData.MRP.TLVHeader.Type = ['MRP LinkDown (' obj.EtherTypeSpecificData.MRP.TLVHeader.Type ')'];
+                        case '0x05'
+                            obj.EtherTypeSpecificData.MRP.TLVHeader.Type = ['MRP linkUp (' obj.EtherTypeSpecificData.MRP.TLVHeader.Type ')'];
+                            obj.EtherTypeSpecificData.MRP.TLVHeader.Length =  packetData(18);
+                            obj.EtherTypeSpecificData.MRP.TLVHeader.SA = packetData(19:24);
+                            if sum(packetData(25:26).*[2^8, 2^0]) == 0
+                                obj.EtherTypeSpecificData.MRP.TLVHeader.PortRole = 'Primary ring port (0x0000)';
+                            elseif sum(packetData(25:26).*[2^8, 2^0]) == 1
+                                obj.EtherTypeSpecificData.MRP.TLVHeader.PortRole = 'secondary ring port (0x0001)';
+                            end
+                            obj.EtherTypeSpecificData.MRP.TLVHeader.Interval =  sum(packetData(27:28).*[2^8, 2^0]);
+                           
+                            if sum(packetData(29:30).*[2^8, 2^0]) == 1
+                                obj.EtherTypeSpecificData.MRP.TLVHeader.Blocked = ['0x' dec2hex(sum(packetData(29:30).*[2^8, 2^0]),4) ' The MRC is able to receive and forward frames to port in state blocked'];
+                            else
+                                obj.EtherTypeSpecificData.MRP.TLVHeader.Blocked = ['0x' dec2hex(sum(packetData(29:30).*[2^8, 2^0]),4)];
+                            end
+                    end
                 elseif isequal(packetData(13:14),EtherTypeCB)
                     obj.addprop('CB_Redundancy_Tag');
                     obj.CB_Redundancy_Tag.seq = sum(packetData(17:18).*[2^8, 2^0]);
@@ -1325,14 +1377,29 @@ classdef eth < handle & dynamicprops
             IPGlength = 12;
             packetLen = [ obj.packetLen] + IPGlength;
         end
+        
         function obj = sortPackets(obj)
             [~, sortedIDs] = sort([obj.time]);
             obj = obj(sortedIDs);
         end
+        
         function specificPackets = getSpecificPackets(obj, etherType)
             
             specificPackets = obj(ismember({obj.EthertypeOrLength} ,etherType));
         end
+        
+        function specificPackets = getSpecificFrameIDpackets(obj,StartframeID,endFrameID)
+            % Comparing FrameID
+            EtherTypeSpecificData = [obj.EtherTypeSpecificData]';
+            if isfield(EtherTypeSpecificData,"PNIO_FrameID")
+                EtherTypeSpecificData = hex2dec({EtherTypeSpecificData.PNIO_FrameID});
+                id = EtherTypeSpecificData >=  StartframeID & EtherTypeSpecificData <= endFrameID;
+                specificPackets = obj(id);
+            else
+                specificPackets = [];
+            end
+        end
+        
         function cycleCounter = findEqualPackets(obj,packets)
           
             if strcmp(packets(1, 1).EthertypeOrLength, '0x8892')
@@ -1353,17 +1420,21 @@ classdef eth < handle & dynamicprops
     %             identicalPacketID = cell2mat(arrayfun(@(X) find(X.cycleCounter==[packetsETspecData.cycleCounter]) ,objETspecData ,'UniformOutput' ,false));
     %             abs(packetsETspecData.time(identicalPacketID) - objETspecData.time) <2 &  abs(packetsETspecData.time(identicalPacketID) - objETspecData.time) >0;
 
-
+                packetNr = 1;
                 for i = 1:length(obj)
-                    for j = find(obj(i).EtherTypeSpecificData.PNIO_CycleCounter == [packetsETspecData.cycleCounter])
-                        timeDiff = abs([packets(j).time] -obj(i).time);
-                        if timeDiff <2 && timeDiff >=0
-                            cycleCounter(i).side1 = obj(i);
-                            cycleCounter(i).side2 = packets(j);
-                            break
+                    if  ~isempty(obj(i).EtherTypeSpecificData.PNIO_CycleCounter) && ~isempty(packetsETspecData.cycleCounter)
+                        for j = find(obj(i).EtherTypeSpecificData.PNIO_CycleCounter == [packetsETspecData.cycleCounter])
+                            timeDiff = abs([packets(j).time] -obj(i).time);
+                            if timeDiff <2 && timeDiff >=0
+                            
+                                cycleCounter(packetNr,1:2) = [obj(i) packets(j)];
+                                packetNr = packetNr+1;
+    %                             cycleCounter{i,2} = );
+                                break
+                            end
                         end
                     end
-                    if exist('cycleCounter')  && numel(cycleCounter) < i
+                    if exist('cycleCounter')  && ~isempty(cycleCounter) && numel(cycleCounter) < i
                         warning("Missing cyclecounter")
                     end
                 end
@@ -1372,9 +1443,29 @@ classdef eth < handle & dynamicprops
             end
 
         end
+        
+        function packets = getPacketsOfDevice(obj,mac)
+            if ~isempty(obj)
+            ids = ismember(cell2mat({obj.srcMac}'),mac,'rows') | ismember(cell2mat({obj.dstMac}'),mac,'rows');
+            packets = obj(ids);
+            else
+               packets =[]; 
+            end
+        end
 %         function sizeArray = size(obj)
 %             sizeArray = size(obj);
 %         end
+
+        function jitter = calculateJitter(obj)
+            
+            time = [obj.time];     
+            jitter.value =  (time(2:end) -time(1:end-1));
+            updateTime = mean(rmoutliers(round(jitter.value/(31.25e-6))*31.25e-6));
+            jitter.value = [nan (( jitter.value - updateTime)/updateTime)*100];
+            jitter.mean = mean(jitter.value,'omitnan');
+            jitter.max = max(jitter.value);
+             
+        end
     end
     methods (Access = private)
         function setFrameID (obj, FrameID, APDU)

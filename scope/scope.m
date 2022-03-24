@@ -366,8 +366,8 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
             
             s=1;
             for i=1:numel(ch)
-                for  j =1:numel(obj.channels)
-                    if contains(obj.channels(j).name,string(ch(i)))
+                for  j =1:numel(obj.math.channel)
+                    if contains(obj.math(j).channel(j).name,string(ch(i)))
                         % declaration ylabel
                         switch obj.math(j).channel.vertical_unit
                             case 'dB'
@@ -970,7 +970,7 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
                 
                 
                 chNames = file(~cellfun('isempty',(regexpi(file,'CH'))));
-                mthNames = file(~cellfun('isempty',(regexpi(file,'MaTH'))));
+                mthNames = file(~cellfun('isempty',(regexpi(file,'Math'))));
                 
                 obj.fileName = extractBefore(file{1},'_Ch');
             elseif numel(fileNames)==0

@@ -40,29 +40,29 @@ classdef channel < dynamicprops & matlab.mixin.Copyable
             obj.pn = eth.scoperead(scopeTemp,i,verbose);
         end
         
-        function [freq_axis, fft_result,N] = advancedFFT(obj,scale,window,gatePosition,gateDuration,levelOffset)
+        function [freq_axis, fft_result,N] = advancedFFT(obj,scopeObj,scale,window,gatePosition,gateDuration)
             
             recordStart = gatePosition-gateDuration/2;
             recordEnd = gatePosition+gateDuration/2;
-            periodExtracted = zeros(1,length(obj.time));
-            t1 = find(obj.time>=recordStart,1,'first');
-            t2= find(obj.time>=recordEnd,1,'first');
+            periodExtracted = zeros(1,length(scopeObj.time));
+            t1 = find(scopeObj.time>=recordStart,1,'first');
+            t2= find(scopeObj.time>=recordEnd,1,'first');
             periodExtracted(t1:t2) = 1;
             figure
             hold on
-            plot(objScope(1).time,obj.channels{1}.value)
-            plot(objScop.time,periodExtracted);
+            plot(scopeObj.time,obj.value)
+            plot(scopeObj.time,periodExtracted);
             hold off
             
-            sizeData = length(objScope(1).value{1}(t1:t2-1));
+            sizeData = length(obj.value(t1:t2-1));
             N=sizeData;%2^(nextpow2( sizeData));
-            Fs=1/objScope(1).sample_interval;
+            Fs=1/scopeObj.sample_interval;
             
             if sizeData< N
                 data =zeros(1,N);
-                data(1:sizeData)= obj.channels{1}.value(t1:t2-1);
+                data(1:sizeData)= obj.value(t1:t2-1);
             else
-                data= obj.channels{1}.value(t1:t2-1);
+                data= obj.value(t1:t2-1);
                 data=data(1:N) ;
             end
             
@@ -118,7 +118,7 @@ classdef channel < dynamicprops & matlab.mixin.Copyable
             else
                 data = data';
             end
-            Fs=1/obj(1).sample_interval;
+            Fs=1/scopeObj(1).sample_interval;
             spectr_res= Fs/N;
             max_freq_possible = Fs/2;
             freq_axis = (Fs*(0:(N/2))/N)';
@@ -128,7 +128,7 @@ classdef channel < dynamicprops & matlab.mixin.Copyable
             fft_result=fft_abs(1:N/2+1);
             fft_result(2:end-1) = 2*fft_result(2:end-1);
             if strcmp(scale, 'db')
-                fft_result = mag2db(fft_result)- mag2db(levelOffset);
+                fft_result = mag2db(fft_result);
             end
             
         end
