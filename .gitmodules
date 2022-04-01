@@ -1,0 +1,3 @@
+[submodule "networkAnalyzer"]
+	path = networkAnalyzer
+	url = https://github.com/KU-Leuven-REGAUT-Gent/networkAnalyzer.git

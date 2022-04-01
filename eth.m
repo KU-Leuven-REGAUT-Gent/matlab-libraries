@@ -102,7 +102,7 @@ classdef eth < handle & dynamicprops
         %     srcMacStr = srcMacStr(1:end-1);
         
         
-        function plot(obj,offset_x,offset_y, lineWidth, line_color,packetsToPlot,startPacketNr)
+        function plot(obj,offset_x,offset_y, lineWidth, line_color,startPacketNr,endPacketNr)
             %rectangle('Position' , [offset_x+obj(1).time,offset_x+obj(end).time_end],[offset_y,offset_y],'Color','black','LineWidth',lineWidth/10);
             defaultFaceColor = line_color;
             defaultEdgeColor = line_color;
@@ -117,15 +117,19 @@ classdef eth < handle & dynamicprops
                 legend('PNIO','PN Low Alarm','PN High Alarm','other')
                 hold off
             end
-            if ~exist("packetsToPlot") || packetsToPlot > numel(obj)
-                packetsToPlot = numel(obj);
+            if ~exist("endPacketNr") || endPacketNr > max([obj.packetNum])
+                endPacketNr = numel(obj);
+            else
+                endPacketNr = find([obj.packetNum]<=endPacketNr,1,'last');
             end
             
-            if ~exist("startPacketNr")
+            if ~exist("startPacketNr") || startPacketNr <1
                 startPacketNr = 1;
+            else
+                 startPacketNr = find([obj.packetNum]>=startPacketNr,1,'first');
             end
             
-            for i=startPacketNr:packetsToPlot
+            for i=startPacketNr:endPacketNr
                 FaceColor = defaultFaceColor;
                 EdgeColor = defaultEdgeColor;
                 TimeStart = offset_x+obj(i).time;
@@ -441,7 +445,7 @@ classdef eth < handle & dynamicprops
                     if ~pcapng && (GlobalHeader.network) ==240
                         portNr = floor(data(idx+17)/64)+1;
                         packetNumPort(portNr)=packetNumPort(portNr)+1;
-                        packetNum = packetNumPort(portNr);                           
+%                         packetNum = packetNumPort(portNr);                           
                     else 
                         portNr = 1;
                     end
@@ -468,38 +472,39 @@ classdef eth < handle & dynamicprops
                             timestampLow = pcapBody(9:12);
                         end
                         packetNumPort(portNr)=packetNumPort(portNr)+1;
-                        packetNum = packetNumPort(portNr);       
+%                         packetNum = packetNumPort(portNr);       
                     end  
-                    pcapPackets(portNr).packet(packetNum) = eth(packetNum);
+                    pcapPackets(portNr).packet(packetNumPort(portNr)) = eth(packetNum);
+                         tempPacketNr = packetNumPort(portNr);
                     if pcapng   
                         %% time section
                         if isfield(OptionStruct,'if_tsresol')
-                            pcapPackets(portNr).packet(packetNum).time = (sum(timestampHigh.*[2^56,2^48,2^40,2^32])+sum(timestampLow.*[2^24,2^16,2^8,2^0]))/10^OptionStruct.if_tsresol;
-                            pcapPackets(portNr).packet(packetNum).utcTime =datetime(pcapPackets(portNr).packet(packetNum).time,'ConvertFrom','posixTime','TimeZone','local','Format','dd-MMM-yyyy HH:mm:ss.SSSSSS');
+                            pcapPackets(portNr).packet(tempPacketNr).time = (sum(timestampHigh.*[2^56,2^48,2^40,2^32])+sum(timestampLow.*[2^24,2^16,2^8,2^0]))/10^OptionStruct.if_tsresol;
+                            pcapPackets(portNr).packet(tempPacketNr).utcTime =datetime(pcapPackets(portNr).packet(tempPacketNr).time,'ConvertFrom','posixTime','TimeZone','local','Format','dd-MMM-yyyy HH:mm:ss.SSSSSS');
                              if firstRun
-                                StartTimestampMicroSec = pcapPackets(portNr).packet(packetNum).time;
-                                pcapPackets(portNr).packet(packetNum).time = 0;
+                                StartTimestampMicroSec = pcapPackets(portNr).packet(tempPacketNr).time;
+                                pcapPackets(portNr).packet(tempPacketNr).time = 0;
                                 firstRun = false;
                             else
-                                pcapPackets(portNr).packet(packetNum).time = round(pcapPackets(portNr).packet(packetNum).time  -StartTimestampMicroSec,OptionStruct.if_tsresol);
+                                pcapPackets(portNr).packet(tempPacketNr).time = round(pcapPackets(portNr).packet(tempPacketNr).time  -StartTimestampMicroSec,OptionStruct.if_tsresol);
                             end
                             
                             %                             pcapPackets(portNr).packet(packetNum).time = pcapPackets(portNr).packet(packetNum).time-convertTo(pcapPackets(portNr).packet(1).utcTime,'posixtime','TimeZone','local');
                             % obj(packetNum).time = datestr(obj(packetNum).time/86400 + datenum(1970,1,1));
                         else
-                            pcapPackets(portNr).packet(packetNum).time = (sum(timestampHigh.*[2^56,2^48,2^40,2^32])+sum(timestampLow.*[2^24,2^16,2^8,2^0]))/10^6;
-                            pcapPackets(portNr).packet(packetNum).utcTime =datetime(pcapPackets(portNr).packet(packetNum).time,'ConvertFrom','posixTime','TimeZone','local','Format','dd-MMM-yyyy HH:mm:ss.SSSSSSSSS');
-                            pcapPackets(portNr).packet(packetNum).time = pcapPackets(portNr).packet(packetNum).time-convertTo(pcapPackets(portNr).packet(1).utcTime,'posixtime','TimeZone','local');
+                            pcapPackets(portNr).packet(tempPacketNr).time = (sum(timestampHigh.*[2^56,2^48,2^40,2^32])+sum(timestampLow.*[2^24,2^16,2^8,2^0]))/10^6;
+                            pcapPackets(portNr).packet(tempPacketNr).utcTime =datetime(pcapPackets(portNr).packet(tempPacketNr).time,'ConvertFrom','posixTime','TimeZone','local','Format','dd-MMM-yyyy HH:mm:ss.SSSSSSSSS');
+                            pcapPackets(portNr).packet(tempPacketNr).time = pcapPackets(portNr).packet(tempPacketNr).time-convertTo(pcapPackets(portNr).packet(1).utcTime,'posixtime','TimeZone','local');
                             % obj(packetNum).time = datestr(obj(packetNum).time/86400 + datenum(1970,1,1));
                         end
                         %obj(enhPacketNum).time = datestr(sum(blockBody(12:-1:5).*[2^24; 2^16; 2^8, 2^0; 2^56; 2^48; 2^40; 2^32])/86400/10^6 + datenum(1970,1,1));
-                        pcapPackets(portNr).packet(packetNum).frame.interfaceID = interfaceID; 
+                        pcapPackets(portNr).packet(tempPacketNr).frame.interfaceID = interfaceID; 
                         if contains(OptionStruct.if_name,'banyagent')
-                            pcapPackets(portNr).packet(packetNum).frame.interfaceName = strcat(extractBefore(OptionStruct.if_name,'#'),'#', string(interfaceID));
-                            pcapPackets(portNr).packet(packetNum).frame.encapsulation_desc = extractBefore(OptionStruct.if_name,'_#');
+                            pcapPackets(portNr).packet(tempPacketNr).frame.interfaceName = strcat(extractBefore(OptionStruct.if_name,'#'),'#', string(interfaceID));
+                            pcapPackets(portNr).packet(tempPacketNr).frame.encapsulation_desc = extractBefore(OptionStruct.if_name,'_#');
                         elseif contains(OptionStruct.if_name,'Allegro')
-                            pcapPackets(portNr).packet(packetNum).frame.interfaceName = strcat(extractBefore(OptionStruct.if_name,' interface'),' ',string(interfaceID));
-                            pcapPackets(portNr).packet(packetNum).frame.encapsulation_desc = extractBefore(OptionStruct.if_name,' interface');
+                            pcapPackets(portNr).packet(tempPacketNr).frame.interfaceName = strcat(extractBefore(OptionStruct.if_name,' interface'),' ',string(interfaceID));
+                            pcapPackets(portNr).packet(tempPacketNr).frame.encapsulation_desc = extractBefore(OptionStruct.if_name,' interface');
                         end
                     else
                         %Extracting information from pcap
@@ -520,56 +525,56 @@ classdef eth < handle & dynamicprops
                             if firstRun
                                 StartTimestampSec = TimestampSec;
                                 StartTimestampMicroSec = TimestampMicroSec;
-                                pcapPackets(portNr).packet(packetNum).time = 0;
+                                pcapPackets(portNr).packet(tempPacketNr).time = 0;
                                 firstRun = false;
                             else
-                                pcapPackets(portNr).packet(packetNum).time = (TimestampSec-StartTimestampSec) + ((TimestampMicroSec-StartTimestampMicroSec)*1e-9);
+                                pcapPackets(portNr).packet(tempPacketNr).time = (TimestampSec-StartTimestampSec) + ((TimestampMicroSec-StartTimestampMicroSec)*1e-9);
                             end
                             
                         else
                             if firstRun
                                 StartTimestampSec = TimestampSec;
                                 StartTimestampMicroSec = TimestampMicroSec;
-                                pcapPackets(portNr).packet(packetNum).time = 0;
+                                pcapPackets(portNr).packet(tempPacketNr).time = 0;
                                 firstRun = false;
                             else
-                                pcapPackets(portNr).packet(packetNum).time = (TimestampSec-StartTimestampSec) + ((TimestampMicroSec-StartTimestampMicroSec)*1e-6);
+                                pcapPackets(portNr).packet(tempPacketNr).time = (TimestampSec-StartTimestampSec) + ((TimestampMicroSec-StartTimestampMicroSec)*1e-6);
                             end
                         end
                         
                         switch (GlobalHeader.network)
                             case 1
                                 % Normal Ethernet Packet
-                                pcapPackets(portNr).packet(packetNum).frame.encapsulation_type = 1;
-                                pcapPackets(portNr).packet(packetNum).frame.encapsulation_desc = 'Ethernet';
+                                pcapPackets(portNr).packet(tempPacketNr).frame.encapsulation_type = 1;
+                                pcapPackets(portNr).packet(tempPacketNr).frame.encapsulation_desc = 'Ethernet';
                                 packetData = data(idx+16:idx+16+SnapshotLength-1);
                             case 240
                                 % netANALYZER
-                                pcapPackets(portNr).packet(packetNum).frame.encapsulation_type = 135;
-                                pcapPackets(portNr).packet(packetNum).frame.encapsulation_desc = 'netANALYZER';
-                                pcapPackets(portNr).packet(packetNum).frame.netANALYZER.Status = data(idx+16);
-                                pcapPackets(portNr).packet(packetNum).frame.netANALYZER.Reception_Port = portNr-1;%floor(data(idx+17)/64);
-                                pcapPackets(portNr).packet(packetNum).frame.netANALYZER.Ethernet_frame_length = data(idx+18);
-                                pcapPackets(portNr).packet(packetNum).frame.netANALYZER.Type = mod(data(idx+17),64);
-                                switch(pcapPackets(portNr).packet(packetNum).frame.netANALYZER.Type)
+                                pcapPackets(portNr).packet(tempPacketNr).frame.encapsulation_type = 135;
+                                pcapPackets(portNr).packet(tempPacketNr).frame.encapsulation_desc = 'netANALYZER';
+                                pcapPackets(portNr).packet(tempPacketNr).frame.netANALYZER.Status = data(idx+16);
+                                pcapPackets(portNr).packet(tempPacketNr).frame.netANALYZER.Reception_Port = portNr-1;%floor(data(idx+17)/64);
+                                pcapPackets(portNr).packet(tempPacketNr).frame.netANALYZER.Ethernet_frame_length = data(idx+18);
+                                pcapPackets(portNr).packet(tempPacketNr).frame.netANALYZER.Type = mod(data(idx+17),64);
+                                switch(pcapPackets(portNr).packet(tempPacketNr).frame.netANALYZER.Type)
                                     case 4
                                         packetData = data(idx+20:idx+12+SnapshotLength-1);
-                                        pcapPackets(portNr).packet(packetNum).CRC = data(idx+12+SnapshotLength:idx+15+SnapshotLength);
+                                        pcapPackets(portNr).packet(tempPacketNr).CRC = data(idx+12+SnapshotLength:idx+15+SnapshotLength);
                                     case 5
-                                        pcapPackets(portNr).packet(packetNum).frame.netANALYZER.Event_on = data(idx+35);
-                                        pcapPackets(portNr).packet(packetNum).frame.netANALYZER.Event_type = data(idx+36);
+                                        pcapPackets(portNr).packet(tempPacketNr).frame.netANALYZER.Event_on = data(idx+35);
+                                        pcapPackets(portNr).packet(tempPacketNr).frame.netANALYZER.Event_type = data(idx+36);
                                     otherwise
                                         warn('Unknown netANALYZER Packet Type (GPIO?)');
-                                        pcapPackets(portNr).packet(packetNum).frame.error = 'Unknown netANALYZER Packet Type (GPIO?)';
+                                        pcapPackets(portNr).packet(tempPacketNr).frame.error = 'Unknown netANALYZER Packet Type (GPIO?)';
                                 end
                             otherwise
                                 warn('Unknown encapsulation');
-                                pcapPackets(portNr).packet(packetNum).frame.error = 'Unknown encapsulation';
+                                pcapPackets(portNr).packet(tempPacketNr).frame.error = 'Unknown encapsulation';
                         end
                     end
                     if(~isempty(packetData))
-                        pcapPackets(portNr).packet(packetNum).readByteStream(packetData);
-                        pcapPackets(portNr).packet(packetNum).time_end = pcapPackets(portNr).packet(packetNum).time + pcapPackets(portNr).packet(packetNum).packetLen*8*10e-9;
+                        pcapPackets(portNr).packet(tempPacketNr).readByteStream(packetData);
+                        pcapPackets(portNr).packet(tempPacketNr).time_end = pcapPackets(portNr).packet(tempPacketNr).time + pcapPackets(portNr).packet(tempPacketNr).packetLen*8*10e-9;
                     end
                     packetData = [];
                     packetNum = packetNum + 1;
@@ -1363,14 +1368,15 @@ classdef eth < handle & dynamicprops
             end
         end
         
-        function packetsPort = getPacketsFromReceptionPort(obj,receptionPort)
+        function [packetsPort,remainingPackets] = getPacketsFromReceptionPort(obj,receptionPort)
             packetPortIDs = [obj.frame];
             if isfield(packetPortIDs,'interfaceID')
                 packetPortIDs = ismember([packetPortIDs.interfaceID], receptionPort);
             else
                 packetPortIDs = ismember(arrayfun(@(S) S.netANALYZER.Reception_Port,packetPortIDs) ,receptionPort);
             end
-            packetsPort = obj(packetPortIDs);
+            packetsPort = obj(packetPortIDs);            
+            remainingPackets = obj(~packetPortIDs);
         end
 
         function packetLen = get.packetLen(obj)
@@ -1461,7 +1467,7 @@ classdef eth < handle & dynamicprops
             time = [obj.time];     
             jitter.value =  (time(2:end) -time(1:end-1));
             updateTime = mean(rmoutliers(round(jitter.value/(31.25e-6))*31.25e-6));
-            jitter.value = [nan (( jitter.value - updateTime)/updateTime)*100];
+            jitter.value = [nan (( jitter.value- updateTime))];% /updateTime)*100];
             jitter.mean = mean(jitter.value,'omitnan');
             jitter.max = max(jitter.value);
              
