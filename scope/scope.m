@@ -1002,7 +1002,6 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
                 
                 % Read the file.
                 [y, t, info] = wfm2read(fullFileName);
-                
                 if s==1
                     obj.waveform_type       = info.versioning_number;
                     obj.sample_interval     = 1/info.samplingrate;
