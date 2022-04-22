@@ -649,6 +649,10 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
                 end
             end
         end
+        
+        function lastTime = getLastPacketTime(obj)
+            lastTime = obj.channels(j).pn(end).time;
+        end
     end
     methods (Access = protected)
         function thiscopy = copyElement(this)
