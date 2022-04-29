@@ -1,5 +1,6 @@
 classdef channel < dynamicprops & matlab.mixin.Copyable
     properties
+        nr,
         name, ...
 %             filter_frequency, ...
 %             record_length, ...
@@ -26,7 +27,8 @@ classdef channel < dynamicprops & matlab.mixin.Copyable
     end
     
     methods
-        function obj = channel(name)
+        function obj = channel(nr,name)
+            obj.nr = str2double(nr);
             obj.name = name;
         end
         
@@ -40,7 +42,7 @@ classdef channel < dynamicprops & matlab.mixin.Copyable
             obj.pn = eth.scoperead(scopeTemp,i,verbose);
         end
         
-        function [freq_axis, fft_result,N] = advancedFFT(obj,scopeObj,scale,window,gatePosition,gateDuration)
+        function [freq_axis, fft_result,N] = advancedFFT(obj,scopeObj,scale,window,gatePosition,gateDuration,verbose)
             
             recordStart = gatePosition-gateDuration/2;
             recordEnd = gatePosition+gateDuration/2;
@@ -48,11 +50,13 @@ classdef channel < dynamicprops & matlab.mixin.Copyable
             t1 = find(scopeObj.time>=recordStart,1,'first');
             t2= find(scopeObj.time>=recordEnd,1,'first');
             periodExtracted(t1:t2) = 1;
-            figure
-            hold on
-            plot(scopeObj.time,obj.value)
-            plot(scopeObj.time,periodExtracted);
-            hold off
+            if exist('verbose','var') && verbose
+                figure
+                hold on
+                plot(scopeObj.time,obj.value)
+                plot(scopeObj.time,periodExtracted);
+                hold off
+            end
             
             sizeData = length(obj.value(t1:t2-1));
             N=sizeData;%2^(nextpow2( sizeData));
@@ -226,7 +230,50 @@ classdef channel < dynamicprops & matlab.mixin.Copyable
                 warn( [obj.name ': A deskew of ' num2str(obj.deskew) ' s is configured inside the scope. The signal in MATLAB is already shifted with this time'])
             end          
         end
-        
+        function plot(obj,varargin)
+            [time,xLimits, title] = obj.splitVarargin(varargin);
+              % declaration ylabel
+                        switch obj.vertical_unit
+                            case 'V'
+                                yText = ["Voltage [" + obj.vertical_unit  + "]"] ;
+                            case 'A'
+                                yText = ["Current [" + obj.vertical_unit  + "]"] ;
+                        end
+                        if ~isempty(xLimits)
+
+                            startID = find(time >= xLimits(1),1,'first');
+                            xLimits(1) = time(startID);
+                            endID = find(time <= xLimits(2),1,'last');
+                            xLimits(2) = time(endID);
+                        else
+                            
+                        startID = 1;
+                        endID = numel(time);
+                        end
+                        
+                        
+                        plot(time(startID:endID),obj.value(startID:endID),'LineWidth',2,'Color',pltColor(obj.nr))
+                        
+                        ylabel(yText)
+                        
+                        if title ~= ""
+                            
+                            titlePlot  = obj.name + " - " +  title;
+                        else
+                            titlePlot = obj.name;
+                        end
+                        try
+                            subtitle(titlePlot);
+                        catch
+                            suptitle(tiltePlot);
+                        end
+                        
+                        if ~isempty(xLimits)
+                            xlim(xLimits);
+                        else
+                            xlim([time(1), time(end)]);
+                        end
+        end
     end
     
     methods (Access = private)
@@ -240,11 +287,53 @@ classdef channel < dynamicprops & matlab.mixin.Copyable
             parameterString = regexp(setupText,[regChannel parameter '[^\n\r]+'],'match');
             value = string(extractAfter(parameterString,' '));
         end
+        
     end
   
     methods (Static)
       
+         function [time, xLimits, titles, savePlot, saveName] = splitVarargin(varargin)          
+            varargin = varargin{1};
+            if(numel(varargin) >= 1)
+                while ~isempty(varargin)
+                    if isempty(varargin{1})
+                        varargin(1) = [];
+                    elseif(ischar(varargin{1}))
+                        switch lower(varargin{1})
+                            case 'limit'
+                                xLimits = varargin{2};
+                                varargin(1:2) = [];
+                            case 'time'
+                                time = varargin{2};
+                                varargin(1:2) = [];
+                            case 'title'
+                                titles = varargin{2};
+                                varargin(1:2) = [];                              
+                            otherwise
+                                warn('Unknown argument');
+                                varargin(1) = [];
+                        end
+                    else
+                        warn('Unknown argument');
+                        varargin(1) = [];
+                    end
+                end
+            end
+            
+            if(~exist('ch','var'))
+                ch = [];
+            end
+            if(~exist('saveName','var'))
+                saveName = [];
+                savePlot = false;
+            end
+            if(~exist('titles','var'))
+                titles = [];
+            end
+            if(~exist('xLimits','var'));xLimits= [];end
+        end
         
+            
         function obj = isfreadSignal(scopeObj,fileName,fileID,h)
                 BYT_N = str2double(regexp(h, 'BYT_NR?\s+"*(.*?)"*[;:]', 'once', 'tokens'));
                 BIT_N = str2double(regexp(h, 'BIT_NR?\s+"*(.*?)"*[;:]', 'once', 'tokens'));
@@ -283,9 +372,9 @@ classdef channel < dynamicprops & matlab.mixin.Copyable
                 if( ~feof(fileID) )
                     warn('All expected data was read from %s, but there still appears to be data remaining.', fileName);
                 end
-                
-                
-                obj = channel(char(extractBetween(h,'WFID "',',')));
+                channelName = char(extractBetween(h,'WFID "',','));
+                nr =extractAfter(lower(channelName),'ch');
+                obj = channel(nr,channelName);
                 % Calculate the vertical (y) values. These equations
                 % are given on page 2-171 of the Programmer Manual.
                 obj.value = (str2double( regexp(h, 'YZER?O?\s+([-\+\d\.eE]+)', 'once', 'tokens')) + str2double(regexp(h, 'YMUL?T?\s+([-\+\d\.eE]+)', 'once', 'tokens')) * (binaryData - str2double(regexp(h, 'YOFF?\s+([-\+\d\.eE]+)', 'once', 'tokens'))))';
@@ -294,9 +383,11 @@ classdef channel < dynamicprops & matlab.mixin.Copyable
         
         function obj = wfmreadSignal(fileName,y,info)
             if contains(lower(fileName),'ch')
-                obj = channel( char(strcat('CH' , extractBetween(lower(fileName),'ch','.wfm'))));    
+                nr =extractBetween(lower(fileName),'ch','.wfm');
+                obj = channel(nr, char(strcat('CH' , nr)));    
             elseif contains(lower(fileName),'math')
-                obj = channel( char(strcat('Math' , extractBetween(lower(fileName),'math','.wfm')))); 
+                nr = extractBetween(lower(fileName),'math','.wfm');
+                obj = channel( char(strcat('Math' ,nr))); 
             end
             
                 obj.value = y';

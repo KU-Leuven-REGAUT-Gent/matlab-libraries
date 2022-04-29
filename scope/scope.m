@@ -149,98 +149,98 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
             end
         end
         % ----------------------- FFT function ----------------------------
-        function [freq_axis, fft_result,N] = advancedFFT(obj,scale,window,gatePosition,gateDuration,levelOffset)
-            
-            recordStart = gatePosition-gateDuration/2;
-            recordEnd = gatePosition+gateDuration/2;
-            periodExtracted = zeros(1,length(obj.time));
-            t1 = find(obj.time>=recordStart,1,'first');
-            t2= find(obj.time>=recordEnd,1,'first');
-            periodExtracted(t1:t2) = 1;
-            figure
-            hold on
-            plot(objScope(1).time,obj.channels{1}.value)
-            plot(objScop.time,periodExtracted);
-            hold off
-            
-            sizeData = length(objScope(1).value{1}(t1:t2-1));
-            N=sizeData;%2^(nextpow2( sizeData));
-            Fs=1/objScope(1).sample_interval;
-            
-            if sizeData< N
-                data =zeros(1,N);
-                data(1:sizeData)= obj.channels{1}.value(t1:t2-1);
-            else
-                data= obj.channels{1}.value(t1:t2-1);
-                data=data(1:N) ;
-            end
-            
-            switch window
-                case 'hanning'
-                    %Characteristics:
-                    % -     Better frequency,
-                    % -     Poorer magnitude accuracy than Rectangular.
-                    % -     Hanning has slightly poorer frequencyresolution than Hamming.
-                    % Best for:
-                    % -     Sine, periodic, and narrow-band random noise.
-                    % -     Transients or bursts where the signal levels before and after the event are significantly different
-                    fftWindow = hanning(N);
-                case 'hamming'
-                    %Characteristics:
-                    % -     Better frequency, ,
-                    % -     poorer magnitude accuracy than Rectangular
-                    % -     THamming has slightly better frequencyresolution than Hanning
-                    % Best for:
-                    % -     Sine, periodic, and narrow-band random noise
-                    % -     Transients or bursts where the signal levels before and after the event are significantly different
-                    fftWindow = hamming(N);
-                case 'rectangle'
-                    %Characteristics:
-                    % -     Best frequency,
-                    % -     worst magnitude resolution
-                    % -     This isessentially the same as no window
-                    % Best for:
-                    % -     Transients or bursts where the signal levels before and after the event are nearly equal
-                    % -     Equal-amplitude sine waves with frequencies that are very close
-                    fftWindow = rectwin(N);
-                case 'blackmanharris'
-                    %Characteristics:
-                    % -     worst frequency resolution,
-                    % -     Best magnitude
-                    % -     This isessentially the same as no window
-                    % Best for:
-                    % -     Predominantly single frequency signals to look forhigher order harmonics
-                    fftWindow = blackmanharris(N);
-                case 'gaussian'
-                    %Characteristics:
-                    % -     worst frequency resolution,
-                    % -     Best magnitude
-                    % -     This isessentially the same as no window
-                    % Best for:
-                    % -     Predominantly single frequency signals to look forhigher order harmonics
-                    fftWindow = gausswin(N);
-                otherwise
-                    
-            end
-            if exist('fftWindow','var')
-                data = data'.*fftWindow;
-            else
-                data = data';
-            end
-            Fs=1/obj(1).sample_interval;
-            spectr_res= Fs/N;
-            max_freq_possible = Fs/2;
-            freq_axis = (Fs*(0:(N/2))/N)';
-            
-            fft_res = fft(data,N);
-            fft_abs= (abs(fft_res/N));
-            fft_result=fft_abs(1:N/2+1);
-            fft_result(2:end-1) = 2*fft_result(2:end-1);
-            if strcmp(scale, 'db')
-                fft_result = mag2db(fft_result)- mag2db(levelOffset);
-            end
-            
-        end
+%         function [freq_axis, fft_result,N] = advancedFFT(obj,scale,window,gatePosition,gateDuration,levelOffset)
+%             
+%             recordStart = gatePosition-gateDuration/2;
+%             recordEnd = gatePosition+gateDuration/2;
+%             periodExtracted = zeros(1,length(obj.time));
+%             t1 = find(obj.time>=recordStart,1,'first');
+%             t2= find(obj.time>=recordEnd,1,'first');
+%             periodExtracted(t1:t2) = 1;
+%             figure
+%             hold on
+%             plot(objScope(1).time,obj.channels{1}.value)
+%             plot(objScop.time,periodExtracted);
+%             hold off
+%             
+%             sizeData = length(objScope(1).value{1}(t1:t2-1));
+%             N=sizeData;%2^(nextpow2( sizeData));
+%             Fs=1/objScope(1).sample_interval;
+%             
+%             if sizeData< N
+%                 data =zeros(1,N);
+%                 data(1:sizeData)= obj.channels{1}.value(t1:t2-1);
+%             else
+%                 data= obj.channels{1}.value(t1:t2-1);
+%                 data=data(1:N) ;
+%             end
+%             
+%             switch window
+%                 case 'hanning'
+%                     %Characteristics:
+%                     % -     Better frequency,
+%                     % -     Poorer magnitude accuracy than Rectangular.
+%                     % -     Hanning has slightly poorer frequencyresolution than Hamming.
+%                     % Best for:
+%                     % -     Sine, periodic, and narrow-band random noise.
+%                     % -     Transients or bursts where the signal levels before and after the event are significantly different
+%                     fftWindow = hanning(N);
+%                 case 'hamming'
+%                     %Characteristics:
+%                     % -     Better frequency, ,
+%                     % -     poorer magnitude accuracy than Rectangular
+%                     % -     THamming has slightly better frequencyresolution than Hanning
+%                     % Best for:
+%                     % -     Sine, periodic, and narrow-band random noise
+%                     % -     Transients or bursts where the signal levels before and after the event are significantly different
+%                     fftWindow = hamming(N);
+%                 case 'rectangle'
+%                     %Characteristics:
+%                     % -     Best frequency,
+%                     % -     worst magnitude resolution
+%                     % -     This isessentially the same as no window
+%                     % Best for:
+%                     % -     Transients or bursts where the signal levels before and after the event are nearly equal
+%                     % -     Equal-amplitude sine waves with frequencies that are very close
+%                     fftWindow = rectwin(N);
+%                 case 'blackmanharris'
+%                     %Characteristics:
+%                     % -     worst frequency resolution,
+%                     % -     Best magnitude
+%                     % -     This isessentially the same as no window
+%                     % Best for:
+%                     % -     Predominantly single frequency signals to look forhigher order harmonics
+%                     fftWindow = blackmanharris(N);
+%                 case 'gaussian'
+%                     %Characteristics:
+%                     % -     worst frequency resolution,
+%                     % -     Best magnitude
+%                     % -     This isessentially the same as no window
+%                     % Best for:
+%                     % -     Predominantly single frequency signals to look forhigher order harmonics
+%                     fftWindow = gausswin(N);
+%                 otherwise
+%                     
+%             end
+%             if exist('fftWindow','var')
+%                 data = data'.*fftWindow;
+%             else
+%                 data = data';
+%             end
+%             Fs=1/obj(1).sample_interval;
+%             spectr_res= Fs/N;
+%             max_freq_possible = Fs/2;
+%             freq_axis = (Fs*(0:(N/2))/N)';
+%             
+%             fft_res = fft(data,N);
+%             fft_abs= (abs(fft_res/N));
+%             fft_result=fft_abs(1:N/2+1);
+%             fft_result(2:end-1) = 2*fft_result(2:end-1);
+%             if strcmp(scale, 'db')
+%                 fft_result = mag2db(fft_result)- mag2db(levelOffset);
+%             end
+%             
+%         end
         
         function fft(obj)
             figure;
@@ -268,6 +268,66 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
             xlabel('Frequency [Hz]');
             
             linkaxes(subplotArray,'x');
+        end
+        
+        function advancedFFT(obj,varargin)
+            [ch, xLimits, savePlot, saveName, titles,windowType] = scope.splitVarargin(varargin);
+            if isempty(ch)
+                ch = str2double(extractAfter({obj.channels.name},'Ch')');
+            end
+            saveName = strcat(saveName,'_FFT');
+            chSize = numel(ch);
+            chScope= figure('name',['FFT plot measurement ' obj.fileName ]);
+            fontSize = 20;
+            set(gca,'fontsize',fontSize+2) % set fontsize of the plot to 20
+            set(gcf,'units','normalized','outerposition',[0 0 1 1]) % full screen
+            set(0, 'DefaultAxesFontSize', fontSize);
+            subplotArray=[];
+            verbose = 0;
+            
+            gatePosition = xLimits(1)+(xLimits(2) - xLimits(1))/2;
+            gateDuration = (xLimits(2) - xLimits(1));
+            s=1;
+            for i=1:numel(ch)
+                for  j =1:numel(obj.channels)
+                    if contains(obj.channels(j).name,string(ch(i)))
+                        subplotArray(s) =subplot(chSize,1,s); 
+                        [freq_axis, fft_result] = obj.channels(j).advancedFFT(obj,'db',windowType ,gatePosition,gateDuration,verbose);
+                        plot(freq_axis, fft_result,'LineWidth',2,'Color',pltColor(obj.channels(j).nr))
+                        ylabel('Amplitude [dB]');
+                        if titles(i) ~= ""
+                            
+                            subtitlePlot  = obj.channels(j).name + " - " +  titles(i);
+                        else
+                            subtitlePlot = obj.channels(j).name;
+                        end
+                        try
+                            subtitle(subtitlePlot);
+                        catch
+                            suptitle(subtitlePlot);
+                        end
+                        
+                        
+                        s=s+1;
+                        break;
+                    end
+                end
+            end
+            sgtitle('FFT of chosen channels', 'FontSize',24,'FontWeight','bold')
+            xlabel(["Frequency [Hz]"]);
+            linkaxes(subplotArray,'x');
+            %------- save plot ---------
+            if savePlot
+                D = pwd;
+                if ~exist([D '\matlab'], 'dir')
+                    mkdir([D '\matlab'])
+                end
+                
+                print(chScope,'-dpng',fullfile(D,'matlab', saveName),'-r400');
+                saveas(chScope,fullfile(D,'matlab', strcat(saveName, ".fig")));
+            end
+            
+            
         end
         
         % ----------------------- plot function ----------------------------
@@ -299,30 +359,8 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
             for i=1:numel(ch)
                 for  j =1:numel(obj.channels)
                     if contains(obj.channels(j).name,string(ch(i)))
-                        % declaration ylabel
-                        switch obj.channels(j).vertical_unit
-                            case 'V'
-                                yText = ["Voltage [" + obj.channels(j).vertical_unit  + "]"] ;
-                            case 'A'
-                                yText = ["Current [" + obj.channels(j).vertical_unit  + "]"] ;
-                        end
-                        
-                        subplotArray(s) =subplot(chSize,1,s);
-                        plot(obj.time,obj.channels(j).value,'LineWidth',2,'Color',pltColor(ch(i)))
-                        
-                        ylabel(yText)
-                        
-                        if i<=numel(titles) && titles(i) ~= ""
-                            title(obj.channels(j).name + " - " +  titles(i));
-                        else
-                            title(obj.channels(j).name);
-                        end
-                        
-                        if ~isempty(xLimits)
-                            xlim(xLimits);
-                        else
-                            xlim([obj.time(1), obj.time(end)]);
-                        end
+                        subplotArray(s) =subplot(chSize,1,s); 
+                        plot(obj.channels(j),'time',obj.time,'limit',xLimits,'title',titles(i))
                         
                         s=s+1;
                         break;
@@ -661,7 +699,7 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
         end
     end
     methods (Static)
-        function [ch, xLimits, savePlot, saveName, titles] = splitVarargin(varargin)          
+        function [ch, xLimits, savePlot, saveName, titles,windowtype] = splitVarargin(varargin)          
             varargin = varargin{1};
             if(numel(varargin) >= 1)
                 while ~isempty(varargin)
@@ -684,7 +722,10 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
                                 varargin(1:2) = [];
                             case 'titles'
                                 titles = varargin{2};
-                                varargin(1:2) = [];
+                                varargin(1:2) = [];   
+                            case 'windowtype'
+                                windowtype = varargin{2};
+                                varargin(1:2) = [];   
                             otherwise
                                 warn('Unknown argument');
                                 varargin(1) = [];
@@ -707,6 +748,8 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
                 titles = [];
             end
             if(~exist('xLimits','var'));xLimits= [];end
+            if(~exist('windowtype','var'));windowtype= [];end
+            
         end
         
         function obj = isfread(file, verbose,varargin)
