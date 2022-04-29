@@ -297,23 +297,28 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
                         ylabel('Amplitude [dB]');
                         if titles(i) ~= ""
                             
-                            subtitlePlot  = obj.channels(j).name + " - " +  titles(i);
+                            subtitlePlot  = [obj.channels(j).name , ' - ' ,  char(titles(i))];
                         else
                             subtitlePlot = obj.channels(j).name;
                         end
-                        try
-                            subtitle(subtitlePlot);
-                        catch
-                            suptitle(subtitlePlot);
+                        if chSize>1
+                            try
+                                subtitle(subtitlePlot);
+                            catch
+                                suptitle(subtitlePlot);
+                            end
                         end
-                        
                         
                         s=s+1;
                         break;
                     end
                 end
             end
-            sgtitle('FFT of chosen channels', 'FontSize',24,'FontWeight','bold')
+            if chSize >1
+                sgtitle('FFT of chosen channels', 'FontSize',24,'FontWeight','bold')
+            else
+                sgtitle({'{\bf\fontsize{24} FFT of chosen channels}';  subtitlePlot })                
+            end
             xlabel(["Frequency [Hz]"]);
             linkaxes(subplotArray,'x');
             %------- save plot ---------
