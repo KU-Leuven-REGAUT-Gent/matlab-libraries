@@ -50,10 +50,47 @@
 %  %    plot(                   Plotting Ethernet Packets in Time         %
 %  %        offset_x,                                                     %
 %  %        offset_y,                                                     %
-%  %        lineWidth,                                                    %
+%  %        height,                                                       %
 %  %        line_color,                                                   %
 %  %        packetsToPlot       number of packets to plot                 %
 %  %        startPacketNr)                                                %
+%  %                                                                      %
+%  %    Ethertypes = ethertypes(verbose)  returns a list of all           %
+%  %                                        occured ethertypes            %
+%  %                                                                      %
+%  %    [MACaddresses, IPaddresses] = addresses(verbose)                  %
+%  %                                        returns a list all occured    %
+%  %                                        MAC and IP adresses           %
+%  %                                                                      %
+%  %    result = filter(filterStr, verbose  Wireshark filters can be used %
+%  %                                                                      %
+%  %    [preemptableFragments,info] = getpreemptableFragments()           %
+%  %                             Returns a list of all preamtable frames  %
+%  %                                                                      %
+%  %    [assembledPackets,info] = assemblyPreemptedFrafments()            %
+%  %                              Link the preemted fragments             %
+%  %                                                                      %
+%  %    [packetsPort,remainingPackets] =                                  %
+%  %                    getPacketsFromReceptionPort(receptionPort)        %                                                           %
+%  %                                                                      %
+%  %                                                                      %
+%  %     obj = sortPackets()                                              %
+%  %                                                                      %
+%  %     specificPackets = getSpecificPackets(etherType)                  %
+%  %                                                                      %
+%  %     specificPackets = getSpecificFrameIDpackets(StartframeID,        %
+%  %                                        endFrameID)                   %
+%  %                                                                      %
+%  %     cycleCounter = findEqualPackets(packets)                         %
+%  %                                                                      %
+%  %     packets = getPacketsOfDevice(mac)                                %
+%  %                                                                      %
+%  %     jitter = calculateJitter()                                       %
+%  %                                                                      %
+%  %     copyPhysicalSignal(obj,objScope,chNr)                            %   
+%  %                     Only when scope signals are available            %     
+%  %                     Physical signal is stored in obj(i).phy_signal   %
+%  %                                                                      %
 %  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  %                                                                      %
 %  %    VERBOSE MODE: (default=-1)                                        %
@@ -185,6 +222,117 @@ classdef eth < handle & dynamicprops
                    rgbColor = [51 25 0]/255;  
            end
         end
+        
+        function [Ethertypes] = ethertypes(obj,verbose)
+            if(~exist('verbose','var'));verbose=-1;warn('All underlying functions are executed in verbose mode');end;
+            Ethertypes = [];
+            Counter = [];
+            for i = 1:length(obj)
+                currentEthertype = obj(i).ethertype;
+                found = 0;
+                for j = 1:length(Ethertypes)
+                    if(Ethertypes(j) == currentEthertype)
+                        found = j;
+                        break;
+                    end
+                end
+                if (found == 0)
+                    Ethertypes = [Ethertypes currentEthertype];
+                    Counter = [Counter 1];
+                else
+                    if(found > 1 && Counter(found) == Counter(found-1))
+                        Counter(found-1) = Counter(found-1) + 1;
+                        Ethertemp = Ethertypes(found-1);
+                        Ethertypes(found-1) = Ethertypes(found);
+                        Ethertypes(found) = Ethertemp;
+                    else
+                        Counter(found) = Counter(found) + 1;
+                    end
+                end
+            end
+            if(verbose)
+                disp('Ethertypes:');
+                for i = 1:length(Ethertypes)
+                    if(Counter(i)~=1)
+                        disp([' 0x' dec2hex(Ethertypes(i),4) ' (' int2str(Counter(i)) ' occurences)']);
+                    else
+                        disp([' 0x' dec2hex(Ethertypes(i),4) ' (1 occurence)']);
+                    end
+                end
+            end
+        end
+        
+        function [MACaddresses, IPaddresses] = addresses(obj,verbose)
+            if(~exist('verbose','var'));verbose=-1;warn('All underlying functions are executed in verbose mode');end;
+            MACaddresses = [];
+            Counter = [];
+            srcORdst = true;
+            for i = 1:length(obj)*2
+                if(srcORdst)
+                    currentMAC = sum(obj((i+1)/2).dstMac.*(2.^[40 32 24 16 8 0]));
+                else
+                    currentMAC = sum(obj(i/2).srcMac.*(2.^[40 32 24 16 8 0]));
+                end
+                srcORdst=~srcORdst;
+                found = 0;
+                for j = 1:length(MACaddresses)
+                    if(MACaddresses(j) == currentMAC)
+                        found = j;
+                        break;
+                    end
+                end
+                if (found == 0)
+                    MACaddresses = [MACaddresses currentMAC];
+                    Counter = [Counter 1];
+                else
+                    Counter(found) = Counter(found) + 1;
+                    while(found>1 && Counter(found-1) < Counter(found))
+                        MACtemporary = MACaddresses(found-1);
+                        MACaddresses(found-1) = MACaddresses(found);
+                        MACaddresses(found) = MACtemporary;
+                        Countmp = Counter(found-1);
+                        Counter(found-1) = Counter(found);
+                        Counter(found) = Countmp;
+                        found = found - 1;
+                    end
+                end
+            end
+            if(verbose)
+                disp('MAC-addresses:');
+                MACtemporary = MACaddresses;
+                MACaddresses = cell.empty(0,length(MACtemporary));
+                for i = 1:length(MACtemporary)
+                    MACaddresses{i} = eth.mac2hex(MACtemporary(i));
+                    if(Counter(i)~=1)
+                        disp([' ' MACaddresses{i} ' (' int2str(Counter(i)) ' occurences)']);
+                    else
+                        disp([' ' MACaddresses{i} ' (1 occurence)']);
+                    end
+                end
+            end
+        end
+        
+        function result = filter(obj, filterStr, verbose)
+            if(~exist('verbose','var'));verbose=-1;warn('All underlying functions are executed in verbose mode');end;
+            try
+                [logicals,filter] = filter_intern(obj,filterStr,verbose-(verbose>0));
+                result = obj(logicals);
+                if(verbose)
+                    disp(['FILTER: ' filter sprintf('\n') ' (' num2str(length(result)) ' results)']);
+                end                
+            catch ME
+                if(strcmp(ME.identifier,'eth:filter_intern:invalid_filter'))
+                    warn(['Invalid filter: ' filterStr sprintf('\n') ' Error in filter part: ' ME.message '\n (internal workaround: Filter not applied)']);
+                    result = obj;
+                elseif(strcmp(ME.identifier,'eth:filter_intern:unsupported_filter'))
+                    warn(['Unsupported filter: ' filterStr sprintf('\n') ' Filter "' ME.message '" not yet supported' sprintf('\n') ' (internal workaround: Filter not applied)']);
+                    result = obj;
+                else
+                    rethrow(ME);
+                end
+            end
+        end 
+     
     end
     methods (Static)
         %% FUNCTION - CSV READ
@@ -843,118 +991,7 @@ classdef eth < handle & dynamicprops
         end
         
     end
-    methods
-        
-        function [Ethertypes] = ethertypes(obj,verbose)
-            if(~exist('verbose','var'));verbose=-1;warn('All underlying functions are executed in verbose mode');end;
-            Ethertypes = [];
-            Counter = [];
-            for i = 1:length(obj)
-                currentEthertype = obj(i).ethertype;
-                found = 0;
-                for j = 1:length(Ethertypes)
-                    if(Ethertypes(j) == currentEthertype)
-                        found = j;
-                        break;
-                    end
-                end
-                if (found == 0)
-                    Ethertypes = [Ethertypes currentEthertype];
-                    Counter = [Counter 1];
-                else
-                    if(found > 1 && Counter(found) == Counter(found-1))
-                        Counter(found-1) = Counter(found-1) + 1;
-                        Ethertemp = Ethertypes(found-1);
-                        Ethertypes(found-1) = Ethertypes(found);
-                        Ethertypes(found) = Ethertemp;
-                    else
-                        Counter(found) = Counter(found) + 1;
-                    end
-                end
-            end
-            if(verbose)
-                disp('Ethertypes:');
-                for i = 1:length(Ethertypes)
-                    if(Counter(i)~=1)
-                        disp([' 0x' dec2hex(Ethertypes(i),4) ' (' int2str(Counter(i)) ' occurences)']);
-                    else
-                        disp([' 0x' dec2hex(Ethertypes(i),4) ' (1 occurence)']);
-                    end
-                end
-            end
-        end
-        
-        function [MACaddresses, IPaddresses] = addresses(obj,verbose)
-            if(~exist('verbose','var'));verbose=-1;warn('All underlying functions are executed in verbose mode');end;
-            MACaddresses = [];
-            Counter = [];
-            srcORdst = true;
-            for i = 1:length(obj)*2
-                if(srcORdst)
-                    currentMAC = sum(obj((i+1)/2).dstMac.*(2.^[40 32 24 16 8 0]));
-                else
-                    currentMAC = sum(obj(i/2).srcMac.*(2.^[40 32 24 16 8 0]));
-                end
-                srcORdst=~srcORdst;
-                found = 0;
-                for j = 1:length(MACaddresses)
-                    if(MACaddresses(j) == currentMAC)
-                        found = j;
-                        break;
-                    end
-                end
-                if (found == 0)
-                    MACaddresses = [MACaddresses currentMAC];
-                    Counter = [Counter 1];
-                else
-                    Counter(found) = Counter(found) + 1;
-                    while(found>1 && Counter(found-1) < Counter(found))
-                        MACtemporary = MACaddresses(found-1);
-                        MACaddresses(found-1) = MACaddresses(found);
-                        MACaddresses(found) = MACtemporary;
-                        Countmp = Counter(found-1);
-                        Counter(found-1) = Counter(found);
-                        Counter(found) = Countmp;
-                        found = found - 1;
-                    end
-                end
-            end
-            if(verbose)
-                disp('MAC-addresses:');
-                MACtemporary = MACaddresses;
-                MACaddresses = cell.empty(0,length(MACtemporary));
-                for i = 1:length(MACtemporary)
-                    MACaddresses{i} = eth.mac2hex(MACtemporary(i));
-                    if(Counter(i)~=1)
-                        disp([' ' MACaddresses{i} ' (' int2str(Counter(i)) ' occurences)']);
-                    else
-                        disp([' ' MACaddresses{i} ' (1 occurence)']);
-                    end
-                end
-            end
-        end
-        
-        function result = filter(obj, filterStr, verbose)
-            if(~exist('verbose','var'));verbose=-1;warn('All underlying functions are executed in verbose mode');end;
-            try
-                [logicals,filter] = filter_intern(obj,filterStr,verbose-(verbose>0));
-                result = obj(logicals);
-                if(verbose)
-                    disp(['FILTER: ' filter sprintf('\n') ' (' num2str(length(result)) ' results)']);
-                end                
-            catch ME
-                if(strcmp(ME.identifier,'eth:filter_intern:invalid_filter'))
-                    warn(['Invalid filter: ' filterStr sprintf('\n') ' Error in filter part: ' ME.message '\n (internal workaround: Filter not applied)']);
-                    result = obj;
-                elseif(strcmp(ME.identifier,'eth:filter_intern:unsupported_filter'))
-                    warn(['Unsupported filter: ' filterStr sprintf('\n') ' Filter "' ME.message '" not yet supported' sprintf('\n') ' (internal workaround: Filter not applied)']);
-                    result = obj;
-                else
-                    rethrow(ME);
-                end
-            end
-        end 
-        
+    methods        
         function [result, filter] = filter_intern(obj, filterStr, verbose)
             expression = '^\s*\((.*)\)\s*$';
             trim_brackets = true;
@@ -1183,6 +1220,7 @@ classdef eth < handle & dynamicprops
             
             
         end
+        
         function fragCount(obj,fragCountByte)
             switch fragCountByte
                 case 0xE6
@@ -1195,6 +1233,7 @@ classdef eth < handle & dynamicprops
                     obj.frame.preemption.fragCount = 3;    
             end
         end
+        
         function readByteStream (obj, packetData)
             % This function reads packet byte stream
             offset = 0;
@@ -1436,10 +1475,71 @@ classdef eth < handle & dynamicprops
        end
         end
         
-        function preemptedFragments = getpreemptedFragments(obj)
+        function [preemptableFragments,info] = getpreemptableFragments(obj)
             frames = {obj.frame};
-            preemptedPacketIDs=cellfun(@(x) isfield(x,"preemption"),frames);
+            preemptablePacketIDs=cellfun(@(x) isfield(x,"preemption"),frames);
+            preemptableFragments = obj(preemptablePacketIDs);
+            info.preemptableFrames = length(preemptableFragments);
+            info.precentagePreemtableFrames = info.preemptableFrames/length(obj)*100;
+            
+            frames = {preemptableFragments.frame};
+            preemptedPacketIDs=cellfun(@(x) contains(x.type,'Continuation preempted fragment'),frames);
             preemptedFragments = obj(preemptedPacketIDs);
+            info.continuationFragments = length(preemptedFragments);
+            info.precentagecontinuationFragments = info.continuationFragments/length(obj)*100;
+        end
+        
+        function [assembledPackets,info] = assemblyPreemptedFrafments(obj)
+            packets = obj.getpreemptableFragments();
+            preemptionID = 1;
+            preemtedPacketsCounter = 0;
+            assembledPackets.initial = eth.empty(1,0);
+            assembledPackets.continuations = eth.empty(1,0);
+            
+            for i=1:length(packets)
+                if contains(packets(i).frame.type,'Initial')                    
+                    assembledPackets(preemptionID).initial = packets(i);
+                    preemptionID = preemptionID +1;
+                    continuationID = 1;
+                end
+                if contains(packets(i).frame.type,'Continuation')
+                    if length(assembledPackets) ==(preemptionID-1) &&  ~isempty(assembledPackets(preemptionID-1).initial)
+                        initialPacket = assembledPackets(preemptionID-1).initial;
+                        if packets(i).frame.preemption.smd(end) == initialPacket.frame.preemption.smd(end)
+                            assembledPackets(preemptionID-1).continuations(continuationID) = packets(i);
+                            if continuationID==1
+                                preemtedPacketsCounter = preemtedPacketsCounter+1;
+                            end
+                            continuationID =continuationID+1;
+                            
+                        else
+                            continuationID =1;
+                            assembledPackets(preemptionID).continuations(continuationID) = packets(i);  
+                            preemptionID = preemptionID +1;
+                            preemtedPacketsCounter = preemtedPacketsCounter+1;
+                        end
+                    else
+                        % check if continuation fragment belongs to the
+                        % same packet as the fragment before
+                        if preemptionID >1 && ~isempty(assembledPackets(preemptionID-1).continuations)
+                             previousFragment = assembledPackets(preemptionID-1).continuations(continuationID);
+                        else
+                            previousFragment = [];
+                        end
+                        if ~isempty(previousFragment) && packets(i).frame.preemption.smd(end) == previousFragment.frame.preemption.smd(end)
+                            continuationID = continuationID + 1;
+                            assembledPackets(preemptionID-1).continuations(continuationID) = packets(i);
+                            
+                        else
+                            continuationID =1;
+                            assembledPackets(preemptionID).continuations(continuationID) = packets(i);
+                            preemptionID = preemptionID +1; 
+                        end
+                    end
+                end
+            end
+            info.preemtedPackets = preemtedPacketsCounter;
+            info.percentagePreemtedPackets = info.preemtedPackets/length([assembledPackets.initial])*100;
         end
         
         function delayCorrection(obj,correctionTime)
@@ -1550,21 +1650,17 @@ classdef eth < handle & dynamicprops
                packets =[]; 
             end
         end
-%         function sizeArray = size(obj)
-%             sizeArray = size(obj);
-%         end
-
-        function jitter = calculateJitter(obj)
-            
+      
+        function jitter = calculateJitter(obj)            
             time = [obj.time];     
             jitter.value =  (time(2:end) -time(1:end-1));
             updateTime = mean(rmoutliers(round(jitter.value/(31.25e-6))*31.25e-6));
             jitter.value = [nan (( jitter.value- updateTime))];% /updateTime)*100];
             jitter.mean = mean(jitter.value,'omitnan');
-            jitter.max = max(jitter.value);
-             
+            jitter.max = max(jitter.value);             
         end
     end
+    
     methods (Access = private)
         function setFrameID (obj, FrameID, APDU)
             % This function is used for setting proper packet description in eth objects
