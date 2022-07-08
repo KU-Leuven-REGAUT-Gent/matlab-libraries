@@ -384,10 +384,10 @@ classdef channel < dynamicprops & matlab.mixin.Copyable
         function obj = wfmreadSignal(fileName,y,info)
             if contains(lower(fileName),'ch')
                 nr =extractBetween(lower(fileName),'ch','.wfm');
-                obj = channel(nr, char(strcat('CH' , nr)));    
+                obj = channel(nr{1}, char(strcat('CH' , nr{1})));    
             elseif contains(lower(fileName),'math')
                 nr = extractBetween(lower(fileName),'math','.wfm');
-                obj = channel( char(strcat('Math' ,nr))); 
+                obj = channel( nr{1},char(strcat('Math' ,nr{1}))); 
             end
             
                 obj.value = y';

@@ -1,5 +1,5 @@
 <deployment-project plugin="plugin.apptool" plugin-version="1.0">
-  <configuration build-checksum="2250606390" file="F:\Documents\Libraries\MATLAB\matlab-libraries\scope\scopeApp.prj" location="F:\Documents\Libraries\MATLAB\matlab-libraries\scope" name="scopeApp" target="target.mlapps" target-name="Package App">
+  <configuration build-checksum="3322365958" file="F:\Documents\Libraries\MATLAB\matlab-libraries\scope\scopeApp.prj" location="F:\Documents\Libraries\MATLAB\matlab-libraries\scope" name="scopeApp" target="target.mlapps" target-name="Package App">
     <param.appname>scopeApp</param.appname>
     <param.authnamewatermark>Dimitri De Schuyter</param.authnamewatermark>
     <param.email />
@@ -7,7 +7,8 @@
     <param.icon />
     <param.icons />
     <param.summary />
-    <param.description>Added plotting Channels and FFT time period and FFT window type 
+    <param.description>Better view
+Added plotting Channels and FFT time period and FFT window type 
 Fixed remaining tilte input fields
 Fixed information panel error when retrieving isf and wfm files
 Added information panel
@@ -20,7 +21,7 @@ Added FFT
 Added  pn plotting function
 Fix multiple channel profinet decoding
 Fix compatibillity for multiple platforms</param.description>
-    <param.screenshot>C:\Users\Dimitri De Schuyter\AppData\Local\Temp\tp4dbf4c54_089a_496b_b04b_31d3e24ffbca.png</param.screenshot>
+    <param.screenshot>C:\Users\Dimitri De Schuyter\AppData\Local\Temp\tp329e7185_def2_4cef_a956_79e608c4a092.png</param.screenshot>
     <param.version>1.4</param.version>
     <param.products.name />
     <param.products.id />

@@ -102,8 +102,9 @@ classdef eth < handle & dynamicprops
         %     srcMacStr = srcMacStr(1:end-1);
         
         
-        function plot(obj,offset_x,offset_y, lineWidth, line_color,startPacketNr,endPacketNr)
+        function plot(obj,offset_x,offset_y, height, line_color,startPacketNr,endPacketNr)
             %rectangle('Position' , [offset_x+obj(1).time,offset_x+obj(end).time_end],[offset_y,offset_y],'Color','black','LineWidth',lineWidth/10);
+            
             defaultFaceColor = line_color;
             defaultEdgeColor = line_color;
             IFGFaceColor = [0.9 0.9 0.9];
@@ -130,13 +131,14 @@ classdef eth < handle & dynamicprops
             end
             
             for i=startPacketNr:endPacketNr
+                lineWidth = 1;
                 FaceColor = defaultFaceColor;
                 EdgeColor = defaultEdgeColor;
                 TimeStart = offset_x+obj(i).time;
                 TimeEnd = offset_x+obj(i).time + (obj(i).packetLen)*8*10e-9;
                 
                 
-                if(obj(i).EthertypeOrLength == '0x8892')
+                if ~isempty(obj(i).EthertypeOrLength) && contains(obj(i).EthertypeOrLength,'0x8892')
                     frameID= str2num(['0x' obj(i).EtherTypeSpecificData.PNIO_FrameID]);
                     if(frameID >= 0x8000 && frameID <= 0xBFFF ) 
                         FaceColor = 'g';
@@ -148,19 +150,41 @@ classdef eth < handle & dynamicprops
                         FaceColor = [1, 0, 0]; % Red
                         EdgeColor = [255 0 0]/255;
                     end
+                else
+                    if contains(obj(i).frame.type, "Initial preempted fragment")
+                        EdgeColor = obj(i).preemptionColor();
+                        lineWidth = 5;
+                    elseif contains(obj(i).frame.type,"Continuation preempted fragment")
+                        FaceColor = obj(i).preemptionColor();
+                        EdgeColor = obj(i).preemptionColor();                        
+                    end                        
                 end
+                
                 %% IFG
-                rectangle ( 'Position' , [TimeEnd offset_y-(lineWidth/2) (12*8*10e-9) lineWidth],...
+                rectangle ( 'Position' , [TimeEnd offset_y-(height/2) (12*8*10e-9) height],...
                     'FaceColor' , IFGFaceColor,...
-                    'EdgeColor', IFGEdgeColor);
+                    'EdgeColor', IFGEdgeColor,...
+                    'LineWidth',1);
                 %% PACKET
-                rectangle ( 'Position' , [TimeStart offset_y-(lineWidth/2) (TimeEnd-TimeStart) lineWidth],...
+                rectangle ( 'Position' , [TimeStart offset_y-(height/2) (TimeEnd-TimeStart) height],...
                     'FaceColor' , FaceColor,...
-                    'EdgeColor', EdgeColor);
+                    'EdgeColor', EdgeColor,...
+                    'LineWidth',lineWidth);
             end
         end
         
-        
+        function rgbColor =  preemptionColor(obj)
+           switch str2double(obj.frame.preemption.smd(end))
+               case 0
+                   rgbColor = [255 153 51]/255;
+               case 1
+                   rgbColor = [204 102 0]/255;
+               case 2
+                   rgbColor = [102 51 0]/255;  
+               case 3
+                   rgbColor = [51 25 0]/255;  
+           end
+        end
     end
     methods (Static)
         %% FUNCTION - CSV READ
@@ -505,6 +529,9 @@ classdef eth < handle & dynamicprops
                         elseif contains(OptionStruct.if_name,'Allegro')
                             pcapPackets(portNr).packet(tempPacketNr).frame.interfaceName = strcat(extractBefore(OptionStruct.if_name,' interface'),' ',string(interfaceID));
                             pcapPackets(portNr).packet(tempPacketNr).frame.encapsulation_desc = extractBefore(OptionStruct.if_name,' interface');
+                        else
+                            pcapPackets(portNr).packet(tempPacketNr).frame.interfaceName = strcat(extractBefore(OptionStruct.if_name,'_'),' ',string(interfaceID));
+                            pcapPackets(portNr).packet(tempPacketNr).frame.encapsulation_desc = extractBefore(OptionStruct.if_name,'__');
                         end
                     else
                         %Extracting information from pcap
@@ -1156,9 +1183,21 @@ classdef eth < handle & dynamicprops
             
             
         end
-        
+        function fragCount(obj,fragCountByte)
+            switch fragCountByte
+                case 0xE6
+                    obj.frame.preemption.fragCount = 0;
+                case 0x4C
+                    obj.frame.preemption.fragCount = 1;
+                case 0x7F
+                    obj.frame.preemption.fragCount = 2;    
+                case 0xB3
+                    obj.frame.preemption.fragCount = 3;    
+            end
+        end
         function readByteStream (obj, packetData)
             % This function reads packet byte stream
+            offset = 0;
             EtherTypeVLAN = [129,0]; % 0x8100
             EtherTypePROFINET = [136,146]; % 0x8892
             EtherTypeIP = [8,0]; % 0x0800
@@ -1167,35 +1206,81 @@ classdef eth < handle & dynamicprops
             EtherTypeMRP = [136,227]; % 0x88E3
             EtherTypeCB = [241,193];
             
-            % Creating an eth object
-            obj.dstMac = packetData(1:6);
-            obj.srcMac = packetData(7:12);
+%           https://www.ieee802.org/3/br/public/Tutorial2_Berlin/8023-IET-TF-1501-Winkel-Tutorial-20150115_r06.pdf
+%           https://iebmedia.com/technology/tsn/tsn-technology-basics-of-ethernet-frame-preemption-part-2/
+            if packetData(1:6) == [0x55,0x55,0x55,0x55,0x55,0x55] %check if preemption is used
+                if packetData(8) == 0xD5 % express frame                   
+                    obj.frame.type = 'express';
+                    packetData = packetData(9:end);
+                elseif packetData(7) == 0x55 % Initial fragment                   
+                    obj.frame.type = 'Initial preempted fragment';  
+                    switch packetData(8)
+                        case 0xE6 %Initial fragmentt 0
+                            obj.frame.preemption.smd = 'SMD-S0';                        
+                        case 0x4C %Initial fragment 1
+                            obj.frame.preemption.smd = 'SMD-S1';
+                        case 0x7F %Initial fragment 2
+                            obj.frame.preemption.smd = 'SMD-S2';
+                        case 0xB3 %Initial fragment 3
+                            obj.frame.preemption.smd = 'SMD-S3';
+                    end
+                    packetData = packetData(9:end);
+                else %
+                    obj.frame.type = 'Continuation preempted fragment';
+                    switch packetData(7)
+                        case 0x61 %Continuation  fragmentt 0                        
+                            obj.frame.preemption.smd = 'SMD-C0';
+                            fragCount(obj,packetData(8));
+                        case 0x52 %Continuation  fragment 1
+                            obj.frame.preemption.smd = 'SMD-C1';
+                            fragCount(obj,packetData(8));
+                        case 0x9E %Continuation  fragment 2
+                            obj.frame.preemption.smd = 'SMD-C2';
+                            fragCount(obj,packetData(8));
+                        case 0x2A %Continuation  fragment 3
+                            obj.frame.preemption.smd = 'SMD-C3';
+                            fragCount(obj,packetData(8));                        
+                    end
+                end
+            end
+          
+            
+            
+       if isfield(obj.frame,'type') &&  contains(obj.frame.type,'Continuation preempted fragment')   
+           obj.raw = packetData;
+           obj.packetLen = 8 + length(packetData) + 4;
+           obj.APDU = packetData(8:end);                
+       else           
+           % Creating an eth object
+            obj.dstMac = packetData(1+offset:6+offset);
+            obj.srcMac = packetData(7+offset:12+offset);
             obj.raw = packetData;
             % Calculating a full packet length with preambule and fcs/crc
             obj.packetLen = 8 + length(packetData) + 4;
             
             evaluate = true;
-            while(evaluate)
-                evaluate = false;
-                if isequal(packetData(13:14),EtherTypeVLAN) % VLAN TAG
-                    evaluate = true;
-                    QTagCtrlBits = dec2bin(packetData(15:16),8);
-                    obj.VLANTAG.QTag = '0x8100';
-                    obj.VLANTAG.Priority = bin2dec(QTagCtrlBits(1,1:3));
-                    obj.VLANTAG.Flag = QTagCtrlBits(1,4);
-                    obj.VLANTAG.VLAN_ID = bin2dec([QTagCtrlBits(1,5:8) QTagCtrlBits(2,1:8)]);
-                    packetData = [packetData(1:12) packetData(17:end)];
+                % Remove Source and MAC addresses from packetData
+                while(evaluate)
+                    evaluate = false;
+                    if isequal(packetData(13:14),EtherTypeVLAN) % VLAN TAG
+                        evaluate = true;
+                        QTagCtrlBits = dec2bin(packetData(15:16),8);
+                        obj.VLANTAG.QTag = '0x8100';
+                        obj.VLANTAG.Priority = bin2dec(QTagCtrlBits(1,1:3));
+                        obj.VLANTAG.Flag = QTagCtrlBits(1,4);
+                        obj.VLANTAG.VLAN_ID = bin2dec([QTagCtrlBits(1,5:8) QTagCtrlBits(2,1:8)]);
+                        packetData = [packetData(1:12) packetData(17:end)];
+                    end
+                    if isequal(packetData(13:14),EtherTypeHSR) % HSR Header
+                        evaluate = true;
+                        HSRBits = dec2bin(packetData(15:16),8);
+                        obj.EtherTypeSpecificData.HSR.Network = HSRBits(1,1:3);
+                        obj.EtherTypeSpecificData.HSR.LSDU = bin2dec([HSRBits(1,5:8) HSRBits(2,1:8)]);
+                        obj.EtherTypeSpecificData.HSR.Sequence = sum(packetData(17:18).*[2^8, 2^0]);
+                        packetData = [packetData(1:12) packetData(19:end)];
+                    end
                 end
-                if isequal(packetData(13:14),EtherTypeHSR) % HSR Header
-                    evaluate = true;
-                    HSRBits = dec2bin(packetData(15:16),8);
-                    obj.EtherTypeSpecificData.HSR.Network = HSRBits(1,1:3);
-                    obj.EtherTypeSpecificData.HSR.LSDU = bin2dec([HSRBits(1,5:8) HSRBits(2,1:8)]);
-                    obj.EtherTypeSpecificData.HSR.Sequence = sum(packetData(17:18).*[2^8, 2^0]);
-                    packetData = [packetData(1:12) packetData(19:end)];
-                end
-            end
-            
+                   
             obj.ethertype = sum(packetData(13:14).*[2^8, 2^0]);
             if obj.ethertype <= 1500
                 obj.EthertypeOrLength = sum(packetData(13:14).*[2^8, 2^0]);
@@ -1348,6 +1433,13 @@ classdef eth < handle & dynamicprops
                     end
                 end
             end
+       end
+        end
+        
+        function preemptedFragments = getpreemptedFragments(obj)
+            frames = {obj.frame};
+            preemptedPacketIDs=cellfun(@(x) isfield(x,"preemption"),frames);
+            preemptedFragments = obj(preemptedPacketIDs);
         end
         
         function delayCorrection(obj,correctionTime)

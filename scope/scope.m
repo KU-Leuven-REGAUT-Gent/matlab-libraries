@@ -361,19 +361,25 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
             subplotArray=[];
             
             s=1;
+            maxY = 0;
             for i=1:numel(ch)
                 for  j =1:numel(obj.channels)
                     if contains(obj.channels(j).name,string(ch(i)))
                         subplotArray(s) =subplot(chSize,1,s); 
                         plot(obj.channels(j),'time',obj.time,'limit',xLimits,'title',titles(i))
-                        
+                        maxY = max([maxY abs(obj.channels(j).value)]);
                         s=s+1;
                         break;
                     end
                 end
             end
+            
             xlabel(["time ["+ obj.horizontal_units + "]"]);
             linkaxes(subplotArray,'x');
+            maxY = maxY*1.1;
+            for i =1:length(subplotArray)
+            	ylim(subplotArray(i),[-maxY ;maxY]);
+            end
             %------- save plot ---------
             if savePlot
                 D = pwd;
@@ -409,8 +415,8 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
             
             s=1;
             for i=1:numel(ch)
-                for  j =1:numel(obj.math.channel)
-                    if contains(obj.math(j).channel(j).name,string(ch(i)))
+                for  j =1:numel([obj.math.channel])
+                    if contains(obj.math(j).channel.name,string(ch(i)))
                         % declaration ylabel
                         switch obj.math(j).channel.vertical_unit
                             case 'dB'
@@ -435,7 +441,11 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
                         if numel(ch) >1
                             
                             for  c=1:numel(ch)
-                                Hunits(c,:) =  obj.math(c).horizontal_units;
+                                if ~isempty(obj.math(c).horizontal_units)
+                                    Hunits(c,:) =  obj.math(c).horizontal_units;
+                                else
+                                    Hunits(c,:) =  "";
+                                end
                             end
                             % show only the xlabel on the lowest subplot
                             if sum(contains(cellstr(Hunits),Hunits(1,:)))==numel(ch)
