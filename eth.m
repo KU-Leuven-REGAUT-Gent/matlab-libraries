@@ -1582,8 +1582,11 @@ classdef eth < handle & dynamicprops
         end
         
         function specificPackets = getSpecificPackets(obj, etherType)
-            
-            specificPackets = obj(ismember({obj.EthertypeOrLength} ,etherType));
+            if isempty(obj)            
+                specificPackets = obj(ismember({obj.EthertypeOrLength} ,etherType));
+            else
+                specificPackets = [];
+            end
         end
         
         function specificPackets = getSpecificFrameIDpackets(obj,StartframeID,endFrameID)
@@ -1598,9 +1601,10 @@ classdef eth < handle & dynamicprops
             end
         end
         
-        function cycleCounter = findEqualPackets(obj,packets)
+        function cycleCounter = findEqualPackets(obj,direction,packets)
+            cycleCounter = eth.empty(1,0); 
           
-            if strcmp(packets(1, 1).EthertypeOrLength, '0x8892')
+            if strcmp(packets(1, 1).EthertypeOrLength, '0x8892') && ~isempty(packets(1, 1).EtherTypeSpecificData.PNIO) && packets(1, 1).EtherTypeSpecificData.PNIO
                 tempObj = [obj.EtherTypeSpecificData];
                 objETspecData.cycleCounter = [tempObj.PNIO_CycleCounter];
                 objETspecData.userData = [tempObj.PNIO_UserData];
@@ -1621,19 +1625,31 @@ classdef eth < handle & dynamicprops
                 packetNr = 1;
                 for i = 1:length(obj)
                     if  ~isempty(obj(i).EtherTypeSpecificData.PNIO_CycleCounter) && ~isempty(packetsETspecData.cycleCounter)
-                        for j = find(obj(i).EtherTypeSpecificData.PNIO_CycleCounter == [packetsETspecData.cycleCounter])
-                            timeDiff = abs([packets(j).time] -obj(i).time);
-                            if timeDiff <2 && timeDiff >=0
-                            
-                                cycleCounter(packetNr,1:2) = [obj(i) packets(j)];
-                                packetNr = packetNr+1;
-    %                             cycleCounter{i,2} = );
-                                break
+                        if contains(direction ,'send')
+                            for j = find(obj(i).EtherTypeSpecificData.PNIO_CycleCounter == [packetsETspecData.cycleCounter] & ([packetsETspecData.time] -obj(i).time > 0) )
+                                timeDiff = abs([packets(j).time] -obj(i).time);
+                                if timeDiff <2 && timeDiff >=0
+                                    cycleCounter(packetNr,1:2) = [obj(i) packets(j)];
+                                    packetNr = packetNr+1;
+        %                             cycleCounter{i,2} = );
+                                    break
+                                end
+                            end
+                        end
+                          if contains(direction ,'receive')
+                            for j = find(obj(i).EtherTypeSpecificData.PNIO_CycleCounter == [packetsETspecData.cycleCounter] & ([packetsETspecData.time] -obj(i).time < 0) )
+                                timeDiff = abs([packets(j).time] -obj(i).time);
+                                if timeDiff <2 && timeDiff >=0
+                                    cycleCounter(packetNr,1:2) = [obj(i) packets(j)];
+                                    packetNr = packetNr+1;
+        %                             cycleCounter{i,2} = );
+                                    break
+                                end
                             end
                         end
                     end
-                    if exist('cycleCounter')  && ~isempty(cycleCounter) && numel(cycleCounter) < i
-                        warning("Missing cyclecounter")
+                    if isempty(cycleCounter) && numel(cycleCounter) < i
+                        warning("Missing cyclecounter. First packet number: " +  obj(i).packetNum)
                     end
                 end
             else
