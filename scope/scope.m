@@ -3,12 +3,13 @@
 %  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  %                                                                      %
 %  %    Author: Frederic Depuydt                                          %
+%  %    Co-author: Dimitri De Schuyter                                    %
 %  %    Company: KU Leuven                                                %
 %  %    Contact: frederic.depuydt@kuleuven.be; f.depuydt@outlook.com      %
 %  %    Version: 1.3                                                      %
 %  %                                                                      %
 %  %    An Scope class to analyse scope signals                           %
-%  %    Readable files: isf, csv                                          %
+%  %    Readable files: isf, wfm, csv                                     %
 %  %                                                                      %
 %  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  %        FUNCTIONS (static)                 *Object creation*          %
@@ -706,6 +707,61 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
         function lastTime = getLastPacketTime(obj)
             lastTime = obj.channels(j).pn(end).time;
         end
+        function packetList = getPackets(obj)
+            packetCounter =1;
+            for i=1:length(obj.channels)
+                if isprop(obj.channels(i),'pn')
+                    packetList(packetCounter).packets = obj.channels(i).pn;
+                    packetList(packetCounter).channelName = (obj.channels(i).name);
+                    packetCounter =packetCounter+1;
+                end
+            end
+        end
+        
+        function [fig, table] = table(obj, fig)
+            if(~exist('fig','var'));fig = uifigure('Position',[300 100 1200 800]);end; 
+            % create the data
+            
+            
+            colorgen = @(text,color) ['<html><div style="color:rgb(',num2str(color(1)),',',num2str(color(2)),',',num2str(color(3)),');">',text,'</div></html>'];
+            bgcolorgen = @(text,color,bgcolor) ['<html><div style="width:200px;height:15px;padding:2px;color:rgb(',num2str(color(1)),',',num2str(color(2)),',',num2str(color(3)),');background-color:rgb(',num2str(bgcolor(1)),',',num2str(bgcolor(2)),',',num2str(bgcolor(3)),');">',text,'</div></html>'];
+            packetList = obj.getPackets;
+          
+            i=1;
+            for packetListID=1:length(packetList)
+                for packetChannelID = 1:length(packetList(packetListID).packets)
+                    objDisplay = packetList(packetListID).packets(packetChannelID).display;
+                    d{i,1} = packetList(packetListID).channelName;
+                    d(i,2:7) = struct2cell(packetList(packetListID).packets(packetChannelID).getInfo');             
+                    i=i+1;
+                end
+            end
+            d =sortrows(d,2);
+            
+            % Create the column and row names in cell arrays
+            columnname = {'Channel','Time','Destination address','Source address','Packet description','Type','Data'};
+            columnformat = {'char','numeric','char','char','char','char','char'};
+            columnwidth = {50,100,120,120,300,200,200};
+            % Create the uitable
+            tble = uitable(fig,'Data', d,...
+                'ColumnName', columnname,...
+                'ColumnFormat', columnformat,...
+                'ColumnWidth', columnwidth,...
+                'RowName',[],...
+                'Position',[50 50 fig.Position(3)-100 fig.Position(4)-100],...
+                'BackgroundColor',[1 1 1]);
+            pnStyle = uistyle('BackgroundColor','green');
+            alarmLowStyle = uistyle('BackgroundColor',[0.8500 0.3250 0.0980]);
+            alarmHighStyle = uistyle('BackgroundColor','red');
+            
+            pnPacketsID =find(contains(d(:,5),'RT class 2'));
+            alarmLowPacketsID =find(contains(d(:,5),'Alarm Low'));
+            alarmHighPacketsID =find(contains(d(:,5),'Alarm High'));
+            
+            addStyle(tble,pnStyle,'row', pnPacketsID);
+            addStyle(tble,alarmLowStyle,'row', alarmLowPacketsID);
+            addStyle(tble,alarmHighStyle,'row', alarmHighPacketsID);
+        end
     end
     methods (Access = protected)
         function thiscopy = copyElement(this)
@@ -795,8 +851,7 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
             obj = scope('Unknown (ISF)');
             obj.firmware_version = 'Unknown (ISF)';
             if appIndex>0
-                folder = varargin{appIndex +1};
-                
+                folder = varargin{appIndex +1};                
                 
                 chNames = file(~cellfun('isempty',(regexpi(file,'CH'))));
                 mthNames = file(~cellfun('isempty',(regexpi(file,'MTH'))));
@@ -1034,7 +1089,7 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
                 chNames = file(~cellfun('isempty',(regexpi(file,'CH'))));
                 mthNames = file(~cellfun('isempty',(regexpi(file,'Math'))));
                 
-                obj.fileName = extractBefore(file{1},'_Ch');
+                obj.fileName = extractBefore(lower(file{1}),'_ch');
             elseif numel(fileNames)==0
                 error('The pattern did not match any file or files: %s', file);
             elseif numel(fileNames) >1 &&  contains(input('Extract one measurement: ','s'),["y","Y","yes","j","ja"])

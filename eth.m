@@ -2,7 +2,7 @@
 %  %%                          ETH PACKET CLASS                          %%
 %  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  %                                                                      %
-%  %    Author: Frederic Depuydt   
+%  %    Author: Frederic Depuydt
 %  %    Adjusted by: Dimitri De Schuyter
 %  %    Company: KU Leuven                                                %
 %  %    Contact: frederic.depuydt@kuleuven.be; f.depuydt@outlook.com      %
@@ -87,8 +87,8 @@
 %  %                                                                      %
 %  %     jitter = calculateJitter()                                       %
 %  %                                                                      %
-%  %     copyPhysicalSignal(obj,objScope,chNr)                            %   
-%  %                     Only when scope signals are available            %     
+%  %     copyPhysicalSignal(obj,objScope,chNr)                            %
+%  %                     Only when scope signals are available            %
 %  %                     Physical signal is stored in obj(i).phy_signal   %
 %  %                                                                      %
 %  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -126,6 +126,9 @@ classdef eth < handle & dynamicprops
         utcTime
         correctionTime
     end
+    properties (Dependent, Hidden)
+        display
+    end
     methods
         function obj = eth(num)
             obj.packetNum = num;
@@ -149,9 +152,9 @@ classdef eth < handle & dynamicprops
             if isempty(findobj(gcf,'type','legend'))
                 hold on
                 plot(nan,nan,'g') ;
-                plot(nan,nan,'Color',[0.9290, 0.6940, 0.1250]) 
-                plot(nan,nan,'Color',[1, 0, 0]) 
-                plot(nan,nan,'Color',line_color) 
+                plot(nan,nan,'Color',[0.9290, 0.6940, 0.1250])
+                plot(nan,nan,'Color',[1, 0, 0])
+                plot(nan,nan,'Color',line_color)
                 legend('PNIO','PN Low Alarm','PN High Alarm','other')
                 hold off
             end
@@ -164,7 +167,7 @@ classdef eth < handle & dynamicprops
             if ~exist("startPacketNr") || startPacketNr <1
                 startPacketNr = 1;
             else
-                 startPacketNr = find([obj.packetNum]>=startPacketNr,1,'first');
+                startPacketNr = find([obj.packetNum]>=startPacketNr,1,'first');
             end
             
             for i=startPacketNr:endPacketNr
@@ -177,7 +180,7 @@ classdef eth < handle & dynamicprops
                 
                 if ~isempty(obj(i).EthertypeOrLength) && contains(obj(i).EthertypeOrLength,'0x8892')
                     frameID= str2num(['0x' obj(i).EtherTypeSpecificData.PNIO_FrameID]);
-                    if(frameID >= 0x8000 && frameID <= 0xBFFF ) 
+                    if(frameID >= 0x8000 && frameID <= 0xBFFF )
                         FaceColor = 'g';
                         EdgeColor = [0 0.5 0];
                     elseif(frameID == 0xFE01) % ALARM Low
@@ -193,8 +196,8 @@ classdef eth < handle & dynamicprops
                         lineWidth = 5;
                     elseif contains(obj(i).frame.type,"Continuation preempted fragment")
                         FaceColor = obj(i).preemptionColor();
-                        EdgeColor = obj(i).preemptionColor();                        
-                    end                        
+                        EdgeColor = obj(i).preemptionColor();
+                    end
                 end
                 
                 %% IFG
@@ -211,16 +214,16 @@ classdef eth < handle & dynamicprops
         end
         
         function rgbColor =  preemptionColor(obj)
-           switch str2double(obj.frame.preemption.smd(end))
-               case 0
-                   rgbColor = [255 153 51]/255;
-               case 1
-                   rgbColor = [204 102 0]/255;
-               case 2
-                   rgbColor = [102 51 0]/255;  
-               case 3
-                   rgbColor = [51 25 0]/255;  
-           end
+            switch str2double(obj.frame.preemption.smd(end))
+                case 0
+                    rgbColor = [255 153 51]/255;
+                case 1
+                    rgbColor = [204 102 0]/255;
+                case 2
+                    rgbColor = [102 51 0]/255;
+                case 3
+                    rgbColor = [51 25 0]/255;
+            end
         end
         
         function [Ethertypes] = ethertypes(obj,verbose)
@@ -319,7 +322,7 @@ classdef eth < handle & dynamicprops
                 result = obj(logicals);
                 if(verbose)
                     disp(['FILTER: ' filter sprintf('\n') ' (' num2str(length(result)) ' results)']);
-                end                
+                end
             catch ME
                 if(strcmp(ME.identifier,'eth:filter_intern:invalid_filter'))
                     warn(['Invalid filter: ' filterStr sprintf('\n') ' Error in filter part: ' ME.message '\n (internal workaround: Filter not applied)']);
@@ -331,8 +334,106 @@ classdef eth < handle & dynamicprops
                     rethrow(ME);
                 end
             end
-        end 
-     
+        end
+        function info = getInfo(obj)
+            info.time = (obj.time);
+            info.destination =  char(strjoin(string(dec2hex(obj.dstMac)),':'));
+            info.source = char(strjoin(string(dec2hex(obj.srcMac)),':'));
+            info.packetDescription = char(obj.packetDesc);
+            
+            EtherTypeVLAN =  '0x8100';
+            EtherTypePROFINET = '0x8892';
+            EtherTypeIP = '0x0800';
+            EtherTypeARP = '0x0806';
+            EtherTypeHSR = '0x892F';
+            EtherTypeMRP = '0x88E3';
+            EtherTypeCB = '0xF1C1';
+            
+            switch(obj.EthertypeOrLength)
+                case EtherTypeVLAN
+                    info.Type = 'VLAN';
+                case EtherTypePROFINET
+                    value.service = obj.packetDesc;
+                    value.service_color = [0 1 0];
+                    frameID= str2num(['0x' obj.EtherTypeSpecificData.PNIO_FrameID]);
+                    if(frameID >= 0x8000 && frameID <= 0xBFFF )
+                        info.Type = 'PN-IO';
+                    elseif(frameID == 0xFE01) % ALARM Low
+                        info.Type = 'Alarm Low';
+                    elseif(frameID == 0xFC01) % ALARM High
+                        info.Type = 'Alarm High';
+                    elseif(frameID >= 0xFF40 &frameID <= 0xFF43)
+                        info.Type = 'PN-PTCP';
+                    else
+                        info.Type = '';
+                    end
+                case EtherTypeCB
+                    info.Type = obj.frame.type;
+                case EtherTypeMRP
+                    info.Type = obj.EtherTypeSpecificData.MRP.TLVHeader.Type;
+                otherwise
+                    info.Type ='';
+            end
+            info.data = num2str(obj.APDU);
+        end
+        function value = get.display(obj)
+            value = struct('service','','message','','back_color',[1 1 1],'service_color',[0 0 0],'message_color',[0 0 0]);
+            EtherTypeVLAN =  '0x8100';
+            EtherTypePROFINET = '0x8892';
+            EtherTypeIP = '0x0800';
+            EtherTypeARP = '0x0806';
+            EtherTypeHSR = '0x892F';
+            EtherTypeMRP = '0x88E3';
+            EtherTypeCB = '0xF1C1';
+            
+            switch(obj.EthertypeOrLength)
+                case EtherTypeVLAN
+                    value.service = obj.packetDesc;
+                    value.message = 'VLAN';
+                    value.back_color = [1 1 1];
+                    value.service_color = [0.3 0.3 0.3];
+                    value.message_color = [0 0 0];
+                case EtherTypePROFINET
+                    value.service = obj.packetDesc;
+                    value.service_color = [0 1 0];
+                    frameID= str2num(['0x' obj.EtherTypeSpecificData.PNIO_FrameID]);
+                    if(frameID >= 0x8000 && frameID <= 0xBFFF )
+                        value.message_color = [ 0 1 0];
+                        value.back_color = [0 0.5 0];
+                        value.message = 'PN-IO';
+                    elseif(frameID == 0xFE01) % ALARM Low
+                        value.message_color = [0.9290, 0.6940, 0.1250]; % Yellow
+                        value.back_color = [255 0 0]/255;
+                        value.message = 'Alarm low';
+                    elseif(frameID == 0xFC01) % ALARM High
+                        value.message_color = [1, 0, 0]; % Red
+                        value.back_color = [255 0 0]/255;
+                        value.message = 'high';
+                    end
+                case EtherTypeCB
+                    value.back_color = [1 1 1];
+                    value.service_color = [0.3 0.3 0.3];
+                    
+                    if contains(obj.frame.type, "Initial preempted fragment")
+                        value.message_color = obj.preemptionColor();
+                        value.message = obj.frame.type;
+                    elseif contains(obj.frame.type,"Continuation preempted fragment")
+                        value.message_color = obj.preemptionColor();
+                        value.back_color = obj.preemptionColor();
+                        value.message =obj.frame.type;
+                    end
+                case EtherTypeMRP
+                    
+                    obj.EtherTypeSpecificData.MRP.TLVHeader.Type
+                otherwise
+                    value.service = obj.packetDesc;
+                    value.message = 'otherwise';
+                    value.back_color = [1 1 1];
+                    value.service_color = [0.1 0.1 0.1];
+                    value.message_color = [0 0 0];
+                    
+            end
+        end
     end
     methods (Static)
         %% FUNCTION - CSV READ
@@ -401,7 +502,7 @@ classdef eth < handle & dynamicprops
             % Examples: "eth.src == 68:05:ca:1e:84:69 & !udp"
             
             if(~exist('verbose','var'));verbose=-1;warn('All underlying functions are executed in verbose mode');end
-        
+            
             while ~exist('file','var')
                 file = input ('Enter a full filepath.');
             end
@@ -504,7 +605,7 @@ classdef eth < handle & dynamicprops
                         else
                             if(verbose);disp('No endian');end
                         end
-%                         sectionLength=sum(data(idx+16:idx+23).*[2^24,2^16,2^8,2^0])
+                        %                         sectionLength=sum(data(idx+16:idx+23).*[2^24,2^16,2^8,2^0])
                     elseif sum(blockType.*[2^24,2^16,2^8,2^0]) == simplePacketBlock
                         simplePacketBlockNum=simplePacketBlockNum+1;
                         if(verbose);disp(['Simple Packet Block: ' num2str(packetNum)]);end
@@ -571,10 +672,10 @@ classdef eth < handle & dynamicprops
                 disp(['This pcap file contains', num2str(simplePacketBlock), 'that are not displayed.']);
             end
             %% Preallocating memory
-%             obj = eth.empty(0,packetNum);
+            %             obj = eth.empty(0,packetNum);
             % Data from pcap files will present only repeated headers and data
             if ~pcapng
-                data = data (25:end);                
+                data = data (25:end);
             end
             %% Default values below
             idx = 1; byteOrder = 0; packetNum = 1; packetData = [];
@@ -617,8 +718,8 @@ classdef eth < handle & dynamicprops
                     if ~pcapng && (GlobalHeader.network) ==240
                         portNr = floor(data(idx+17)/64)+1;
                         packetNumPort(portNr)=packetNumPort(portNr)+1;
-%                         packetNum = packetNumPort(portNr);                           
-                    else 
+                        %                         packetNum = packetNumPort(portNr);
+                    else
                         portNr = 1;
                     end
                     
@@ -644,16 +745,16 @@ classdef eth < handle & dynamicprops
                             timestampLow = pcapBody(9:12);
                         end
                         packetNumPort(portNr)=packetNumPort(portNr)+1;
-%                         packetNum = packetNumPort(portNr);       
-                    end  
+                        %                         packetNum = packetNumPort(portNr);
+                    end
                     pcapPackets(portNr).packet(packetNumPort(portNr)) = eth(packetNum);
-                         tempPacketNr = packetNumPort(portNr);
-                    if pcapng   
+                    tempPacketNr = packetNumPort(portNr);
+                    if pcapng
                         %% time section
                         if isfield(OptionStruct,'if_tsresol')
                             pcapPackets(portNr).packet(tempPacketNr).time = (sum(timestampHigh.*[2^56,2^48,2^40,2^32])+sum(timestampLow.*[2^24,2^16,2^8,2^0]))/10^OptionStruct.if_tsresol;
                             pcapPackets(portNr).packet(tempPacketNr).utcTime =datetime(pcapPackets(portNr).packet(tempPacketNr).time,'ConvertFrom','posixTime','TimeZone','local','Format','dd-MMM-yyyy HH:mm:ss.SSSSSS');
-                             if firstRun
+                            if firstRun
                                 StartTimestampMicroSec = pcapPackets(portNr).packet(tempPacketNr).time;
                                 pcapPackets(portNr).packet(tempPacketNr).time = 0;
                                 firstRun = false;
@@ -670,7 +771,7 @@ classdef eth < handle & dynamicprops
                             % obj(packetNum).time = datestr(obj(packetNum).time/86400 + datenum(1970,1,1));
                         end
                         %obj(enhPacketNum).time = datestr(sum(blockBody(12:-1:5).*[2^24; 2^16; 2^8, 2^0; 2^56; 2^48; 2^40; 2^32])/86400/10^6 + datenum(1970,1,1));
-                        pcapPackets(portNr).packet(tempPacketNr).frame.interfaceID = interfaceID; 
+                        pcapPackets(portNr).packet(tempPacketNr).frame.interfaceID = interfaceID;
                         if contains(OptionStruct.if_name,'banyagent')
                             pcapPackets(portNr).packet(tempPacketNr).frame.interfaceName = strcat(extractBefore(OptionStruct.if_name,'#'),'#', string(interfaceID));
                             pcapPackets(portNr).packet(tempPacketNr).frame.encapsulation_desc = extractBefore(OptionStruct.if_name,'_#');
@@ -852,7 +953,7 @@ classdef eth < handle & dynamicprops
             % verbose
             [objScope, chNr, threshold, cut_off_frequency, verbose] = eth.splitVarargin(varargin);
             
-            % 
+            %
             objPHY = ethPHYdecode(objScope,'channelnr',chNr,'threshold',threshold,'cut_off_frequency',cut_off_frequency,'verbose',verbose-(verbose>0));
             
             
@@ -942,7 +1043,7 @@ classdef eth < handle & dynamicprops
             if(~exist('threshold','var'));threshold=0.5;end
             if(~exist('cut_off_frequency','var'));cut_off_frequency=2*125e6;end
         end
-            
+        
         function hex = mac2hex(mac)
             if(length(mac)==1 && min(size(mac))==1)
                 if(mac<0)
@@ -971,16 +1072,16 @@ classdef eth < handle & dynamicprops
         function result = advanced_compare(A, operator, B)
             switch(strtrim(operator))
                 case {'==','eq'}
-                    result = (A == B);  
+                    result = (A == B);
                 case {'!='}
                     warn('operator != is depreciated or may have unexpected results');
-                    result = (A ~= B);  
+                    result = (A ~= B);
                 case {'>'}
-                    result = (A > B);  
+                    result = (A > B);
                 case {'<'}
-                    result = (A < B);  
+                    result = (A < B);
                 case {'<='}
-                    result = (A <= B);  
+                    result = (A <= B);
                 case {'>='}
                     result = (A >= B);
             end
@@ -991,7 +1092,7 @@ classdef eth < handle & dynamicprops
         end
         
     end
-    methods        
+    methods
         function [result, filter] = filter_intern(obj, filterStr, verbose)
             expression = '^\s*\((.*)\)\s*$';
             trim_brackets = true;
@@ -1058,13 +1159,13 @@ classdef eth < handle & dynamicprops
                         for i = 1:length(obj)
                             result(i) = all(obj(i).dstMac == filterValue);
                         end
-                    case {'eth.addr'}                        
+                    case {'eth.addr'}
                         for i = 1:length(obj)
                             result(i) = all((obj(i).srcMac == filterValue) | (obj(i).dstMac == filterValue));
                         end
                 end
                 if(filterSign)
-                	filter = [filterName ' == ' eth.mac2hex(filterValue)];
+                    filter = [filterName ' == ' eth.mac2hex(filterValue)];
                 else
                     filter = [filterName ' != ' eth.mac2hex(filterValue)];
                 end
@@ -1089,22 +1190,22 @@ classdef eth < handle & dynamicprops
                 result = logical.empty(0,length(obj));
                 switch lower(filterName)
                     case {'eth.type'}
-                        for i = 1:length(obj)                    
+                        for i = 1:length(obj)
                             result(i) = eth.advanced_compare(obj(i).ethertype,filterSign,filterValue);
-                        end                    
-                    case {'ip.proto'}                        
-                        for i = 1:length(obj)      
+                        end
+                    case {'ip.proto'}
+                        for i = 1:length(obj)
                             result(i) = (isfield(obj(i).EtherTypeSpecificData,'IP') && ...
-                                         isfield(obj(i).EtherTypeSpecificData.IP,'protocol') && ...
-                                         eth.advanced_compare(obj(i).EtherTypeSpecificData.IP.protocol,filterSign,filterValue));
+                                isfield(obj(i).EtherTypeSpecificData.IP,'protocol') && ...
+                                eth.advanced_compare(obj(i).EtherTypeSpecificData.IP.protocol,filterSign,filterValue));
                         end
                     case {'pn_rt.frame_id'}
-                        for i = 1:length(obj) 
+                        for i = 1:length(obj)
                             result(i) = (isfield(obj(i).EtherTypeSpecificData,'PNIO_FrameID') && ...
-                                         eth.advanced_compare(hex2dec(obj(i).EtherTypeSpecificData.PNIO_FrameID),filterSign,filterValue));
+                                eth.advanced_compare(hex2dec(obj(i).EtherTypeSpecificData.PNIO_FrameID),filterSign,filterValue));
                         end
-                end                
-                filter = [lower(filterName) ' ' filterSign ' 0x' dec2hex(filterValue)];               
+                end
+                filter = [lower(filterName) ' ' filterSign ' 0x' dec2hex(filterValue)];
                 return;
             end
             
@@ -1115,12 +1216,12 @@ classdef eth < handle & dynamicprops
                 filterSign = isequal(tokens{1}{2},' eq ') | isequal(tokens{1}{2},'==');
                 filterValue = str2double(tokens{1}{3});
                 
-                result = logical.empty(0,length(obj));                 
+                result = logical.empty(0,length(obj));
                 for i = 1:length(obj)
                     
                 end
                 if(filterSign)
-                	filter = [filterName ' == ' filterValue];
+                    filter = [filterName ' == ' filterValue];
                 else
                     filter = [filterName ' != ' filterValue];
                 end
@@ -1132,7 +1233,7 @@ classdef eth < handle & dynamicprops
             [tokens, ~] = regexp(filterStr,expression,'tokens','match');
             if ~isempty(tokens) %IP ADDRESS
                 filterName = tokens{1}{1};
-                filterSign = isequal(tokens{1}{2},' eq ') | isequal(tokens{1}{2},'==');                
+                filterSign = isequal(tokens{1}{2},' eq ') | isequal(tokens{1}{2},'==');
                 filterValue = str2double(strsplit(tokens{1}{3},'.'));
                 
                 result = logical.empty(0,length(obj));
@@ -1141,27 +1242,27 @@ classdef eth < handle & dynamicprops
                     case {'ip.src'}
                         for i = 1:length(obj)
                             result(i) = (isfield(obj(i).EtherTypeSpecificData,'IP') && ...
-                                         isfield(obj(i).EtherTypeSpecificData.IP,'srcIP') && ...
-                                         all(obj(i).EtherTypeSpecificData.IP.srcIP == filterValue));
+                                isfield(obj(i).EtherTypeSpecificData.IP,'srcIP') && ...
+                                all(obj(i).EtherTypeSpecificData.IP.srcIP == filterValue));
                         end
                     case {'ip.dst'}
                         for i = 1:length(obj)
                             result(i) = (isfield(obj(i).EtherTypeSpecificData,'IP') && ...
-                                         isfield(obj(i).EtherTypeSpecificData.IP,'dstIP') && ...
-                                         all(obj(i).EtherTypeSpecificData.IP.dstIP == filterValue));
+                                isfield(obj(i).EtherTypeSpecificData.IP,'dstIP') && ...
+                                all(obj(i).EtherTypeSpecificData.IP.dstIP == filterValue));
                         end
-                    case {'ip.addr'}                        
+                    case {'ip.addr'}
                         for i = 1:length(obj)
                             result(i) = (isfield(obj(i).EtherTypeSpecificData,'IP') && ...
-                                         isfield(obj(i).EtherTypeSpecificData.IP,'srcIP') && ...
-                                         isfield(obj(i).EtherTypeSpecificData.IP,'dstIP') && ...
-                                         (all(obj(i).EtherTypeSpecificData.IP.srcIP == filterValue) || ...                                         
-                                          all(obj(i).EtherTypeSpecificData.IP.dstIP == filterValue)));
-                                         
+                                isfield(obj(i).EtherTypeSpecificData.IP,'srcIP') && ...
+                                isfield(obj(i).EtherTypeSpecificData.IP,'dstIP') && ...
+                                (all(obj(i).EtherTypeSpecificData.IP.srcIP == filterValue) || ...
+                                all(obj(i).EtherTypeSpecificData.IP.dstIP == filterValue)));
+                            
                         end
                 end
                 if(filterSign)
-                	filter = [filterName ' == ' eth.ip2str(filterValue)];
+                    filter = [filterName ' == ' eth.ip2str(filterValue)];
                 else
                     filter = [filterName ' != ' eth.ip2str(filterValue)];
                 end
@@ -1181,7 +1282,7 @@ classdef eth < handle & dynamicprops
                     case {'lldp'}
                         [result, ~] = obj.filter_intern('eth.type == 0x88CC');
                     case {'udp'}
-                        [result, ~] = obj.filter_intern('ip.proto == 17');              
+                        [result, ~] = obj.filter_intern('ip.proto == 17');
                     case {'tcp'}
                         [result, ~] = obj.filter_intern('ip.proto == 6');
                 end
@@ -1193,17 +1294,17 @@ classdef eth < handle & dynamicprops
             if ~isempty(tokens) %Ethertype as HEX
                 switch lower(tokens{1}{1})
                     case {'pn_rt'}
-                        filter = 'eth.type == 0x8892';                        
+                        filter = 'eth.type == 0x8892';
                     case {'pn_io'}
-                        filter = 'eth.type == 0x8892 && pn_rt.frame_id >= 0x0100 && pn_rt.frame_id <= 0xFEFC';                       
+                        filter = 'eth.type == 0x8892 && pn_rt.frame_id >= 0x0100 && pn_rt.frame_id <= 0xFEFC';
                     case {'pn_dcp'}
-                        filter = 'eth.type == 0x8892 && pn_rt.frame_id >= 0xFEFD && pn_rt.frame_id <= 0xFEFF';                       
+                        filter = 'eth.type == 0x8892 && pn_rt.frame_id >= 0xFEFD && pn_rt.frame_id <= 0xFEFF';
                     case {'pn_ptcp'}
-                        filter = 'eth.type == 0x8892 && (pn_rt.frame_id <= 0xFEFD || pn_rt.frame_id >= 0xFF00)';                        
+                        filter = 'eth.type == 0x8892 && (pn_rt.frame_id <= 0xFEFD || pn_rt.frame_id >= 0xFF00)';
                 end
                 warn(['Undocumented filter: `' tokens{1}{1} '` is lacking the required wireshark documentation to verify the correct working' ...
-                       sprintf('\n') ' Current implementation: ' filter ...
-                       sprintf('\n') ' Suggestion: manually compare with Wireshark and report any issues on the Github']);
+                    sprintf('\n') ' Current implementation: ' filter ...
+                    sprintf('\n') ' Suggestion: manually compare with Wireshark and report any issues on the Github']);
                 [result, filter] = obj.filter_intern(filter);
                 return;
             end
@@ -1228,9 +1329,9 @@ classdef eth < handle & dynamicprops
                 case 0x4C
                     obj.frame.preemption.fragCount = 1;
                 case 0x7F
-                    obj.frame.preemption.fragCount = 2;    
+                    obj.frame.preemption.fragCount = 2;
                 case 0xB3
-                    obj.frame.preemption.fragCount = 3;    
+                    obj.frame.preemption.fragCount = 3;
             end
         end
         
@@ -1244,18 +1345,20 @@ classdef eth < handle & dynamicprops
             EtherTypeHSR = [137,47]; % 0x892F
             EtherTypeMRP = [136,227]; % 0x88E3
             EtherTypeCB = [241,193];
+            EtherTypeLLDP = [136,204]; % 0x88CC
+            EtherTypeIPv6 = [134,221]; % 0x86dd
             
-%           https://www.ieee802.org/3/br/public/Tutorial2_Berlin/8023-IET-TF-1501-Winkel-Tutorial-20150115_r06.pdf
-%           https://iebmedia.com/technology/tsn/tsn-technology-basics-of-ethernet-frame-preemption-part-2/
+            %           https://www.ieee802.org/3/br/public/Tutorial2_Berlin/8023-IET-TF-1501-Winkel-Tutorial-20150115_r06.pdf
+            %           https://iebmedia.com/technology/tsn/tsn-technology-basics-of-ethernet-frame-preemption-part-2/
             if packetData(1:6) == [0x55,0x55,0x55,0x55,0x55,0x55] %check if preemption is used
-                if packetData(8) == 0xD5 % express frame                   
+                if packetData(8) == 0xD5 % express frame
                     obj.frame.type = 'express';
                     packetData = packetData(9:end);
-                elseif packetData(7) == 0x55 % Initial fragment                   
-                    obj.frame.type = 'Initial preempted fragment';  
+                elseif packetData(7) == 0x55 % Initial fragment
+                    obj.frame.type = 'Initial preempted fragment';
                     switch packetData(8)
                         case 0xE6 %Initial fragmentt 0
-                            obj.frame.preemption.smd = 'SMD-S0';                        
+                            obj.frame.preemption.smd = 'SMD-S0';
                         case 0x4C %Initial fragment 1
                             obj.frame.preemption.smd = 'SMD-S1';
                         case 0x7F %Initial fragment 2
@@ -1267,7 +1370,7 @@ classdef eth < handle & dynamicprops
                 else %
                     obj.frame.type = 'Continuation preempted fragment';
                     switch packetData(7)
-                        case 0x61 %Continuation  fragmentt 0                        
+                        case 0x61 %Continuation  fragmentt 0
                             obj.frame.preemption.smd = 'SMD-C0';
                             fragCount(obj,packetData(8));
                         case 0x52 %Continuation  fragment 1
@@ -1278,26 +1381,26 @@ classdef eth < handle & dynamicprops
                             fragCount(obj,packetData(8));
                         case 0x2A %Continuation  fragment 3
                             obj.frame.preemption.smd = 'SMD-C3';
-                            fragCount(obj,packetData(8));                        
+                            fragCount(obj,packetData(8));
                     end
                 end
             end
-          
             
             
-       if isfield(obj.frame,'type') &&  contains(obj.frame.type,'Continuation preempted fragment')   
-           obj.raw = packetData;
-           obj.packetLen = 8 + length(packetData) + 4;
-           obj.APDU = packetData(8:end);                
-       else           
-           % Creating an eth object
-            obj.dstMac = packetData(1+offset:6+offset);
-            obj.srcMac = packetData(7+offset:12+offset);
-            obj.raw = packetData;
-            % Calculating a full packet length with preambule and fcs/crc
-            obj.packetLen = 8 + length(packetData) + 4;
             
-            evaluate = true;
+            if isfield(obj.frame,'type') &&  contains(obj.frame.type,'Continuation preempted fragment')
+                obj.raw = packetData;
+                obj.packetLen = 8 + length(packetData) + 4;
+                obj.APDU = packetData(8:end);
+            else
+                % Creating an eth object
+                obj.dstMac = packetData(1+offset:6+offset);
+                obj.srcMac = packetData(7+offset:12+offset);
+                obj.raw = packetData;
+                % Calculating a full packet length with preambule and fcs/crc
+                obj.packetLen = 8 + length(packetData) + 4;
+                
+                evaluate = true;
                 % Remove Source and MAC addresses from packetData
                 while(evaluate)
                     evaluate = false;
@@ -1319,160 +1422,190 @@ classdef eth < handle & dynamicprops
                         packetData = [packetData(1:12) packetData(19:end)];
                     end
                 end
-                   
-            obj.ethertype = sum(packetData(13:14).*[2^8, 2^0]);
-            if obj.ethertype <= 1500
-                obj.EthertypeOrLength = sum(packetData(13:14).*[2^8, 2^0]);
-                obj.APDU = packetData(15:end);
-            else
-                EtherTypeHex = dec2hex(obj.ethertype,4);
-                obj.EthertypeOrLength = ['0x' EtherTypeHex];
-                obj.APDU = packetData(15:end);
-                if isequal(packetData(13:14),EtherTypeARP)
-                    obj.packetDesc = 'ARP';
+                
+                obj.ethertype = sum(packetData(13:14).*[2^8, 2^0]);
+                if obj.ethertype <= 1500
+                    obj.EthertypeOrLength = sum(packetData(13:14).*[2^8, 2^0]);
                     obj.APDU = packetData(15:end);
-                elseif isequal(packetData(13:14),EtherTypePROFINET)
-                    FrameID = sum(packetData(15:16).*[2^8, 2^0]);
-                    PNIO_FrameIDHex = dec2hex(packetData(15:16),2);
-                    obj.EtherTypeSpecificData.PNIO_FrameID = sscanf(PNIO_FrameIDHex','%c');
-                    obj.EtherTypeSpecificData.PNIO = [];
-                    obj.EtherTypeSpecificData.PNIO_CycleCounter = [];
-                    obj.EtherTypeSpecificData.PNIO_TransferStatus = [];
-                    obj.EtherTypeSpecificData.PNIO_UserData = [];
-                    obj.EtherTypeSpecificData.PNIO_DataStatus = [];
-                    obj.APDU = packetData(15:end);
-                    % Comparing FrameID
-                    obj.setFrameID(FrameID, obj.APDU);
-                elseif isequal(packetData(13:14),EtherTypeMRP)
-                    obj.EtherTypeSpecificData.MRP.version = sum(packetData(15:16).*[2^8, 2^0]);
-                    obj.EtherTypeSpecificData.MRP.TLVHeader.Type = ['0x' dec2hex(packetData(17),2)];
-                    switch obj.EtherTypeSpecificData.MRP.TLVHeader.Type
-                        case '0x02'
-                            obj.EtherTypeSpecificData.MRP.TLVHeader.Type = ['MRP test (' obj.EtherTypeSpecificData.MRP.TLVHeader.Type ')'];
-                            obj.EtherTypeSpecificData.MRP.TLVHeader.Length =  packetData(18);
-                            obj.EtherTypeSpecificData.MRP.TLVHeader.Prio =  ['0x' dec2hex(sum(packetData(19:20).*[2^8, 2^0]),4)];
-                            obj.EtherTypeSpecificData.MRP.TLVHeader.SA = packetData(21:26);
-                            if sum(packetData(27:28).*[2^8, 2^0]) == 0
-                                obj.EtherTypeSpecificData.MRP.TLVHeader.PortRole = 'Primary ring port (0x0000)';
-                            elseif sum(packetData(27:28).*[2^8, 2^0]) == 1
-                                obj.EtherTypeSpecificData.MRP.TLVHeader.PortRole = 'secondary ring port (0x0001)';
-                            end
-                            if sum(packetData(29:30).*[2^8, 2^0]) == 0
-                                obj.EtherTypeSpecificData.MRP.TLVHeader.RingState = 'Ring open (0x0000)';
-                            elseif sum(packetData(29:30).*[2^8, 2^0]) == 1
-                                obj.EtherTypeSpecificData.MRP.TLVHeader.RingState = 'Ring closed (0x0001)';
-                            end
-                            obj.EtherTypeSpecificData.MRP.TLVHeader.Transition =  ['0x' dec2hex(sum(packetData(31:32).*[2^8, 2^0]),4)];
-                            obj.EtherTypeSpecificData.MRP.TLVHeader.Timestamp =  ['0x' dec2hex(sum(packetData(33:36).*[2^24,2^16,2^8, 2^0]),4)];
-                        case '0x03'
-                            obj.EtherTypeSpecificData.MRP.TLVHeader.Type = ['MRP TopologyChange (' obj.EtherTypeSpecificData.MRP.TLVHeader.Type ')'];
-                        case '0x04' 
-                            obj.EtherTypeSpecificData.MRP.TLVHeader.Type = ['MRP LinkDown (' obj.EtherTypeSpecificData.MRP.TLVHeader.Type ')'];
-                        case '0x05'
-                            obj.EtherTypeSpecificData.MRP.TLVHeader.Type = ['MRP linkUp (' obj.EtherTypeSpecificData.MRP.TLVHeader.Type ')'];
-                            obj.EtherTypeSpecificData.MRP.TLVHeader.Length =  packetData(18);
-                            obj.EtherTypeSpecificData.MRP.TLVHeader.SA = packetData(19:24);
-                            if sum(packetData(25:26).*[2^8, 2^0]) == 0
-                                obj.EtherTypeSpecificData.MRP.TLVHeader.PortRole = 'Primary ring port (0x0000)';
-                            elseif sum(packetData(25:26).*[2^8, 2^0]) == 1
-                                obj.EtherTypeSpecificData.MRP.TLVHeader.PortRole = 'secondary ring port (0x0001)';
-                            end
-                            obj.EtherTypeSpecificData.MRP.TLVHeader.Interval =  sum(packetData(27:28).*[2^8, 2^0]);
-                           
-                            if sum(packetData(29:30).*[2^8, 2^0]) == 1
-                                obj.EtherTypeSpecificData.MRP.TLVHeader.Blocked = ['0x' dec2hex(sum(packetData(29:30).*[2^8, 2^0]),4) ' The MRC is able to receive and forward frames to port in state blocked'];
-                            else
-                                obj.EtherTypeSpecificData.MRP.TLVHeader.Blocked = ['0x' dec2hex(sum(packetData(29:30).*[2^8, 2^0]),4)];
-                            end
-                    end
-                elseif isequal(packetData(13:14),EtherTypeCB)
-                    obj.addprop('CB_Redundancy_Tag');
-                    obj.CB_Redundancy_Tag.seq = sum(packetData(17:18).*[2^8, 2^0]);
-                    obj.CB_Redundancy_Tag.type = ['0x' dec2hex(sum(packetData(19:20).*[2^8, 2^0]))];
-                    obj.ethertype =sum(packetData(19:20).*[2^8, 2^0]);
+                else
                     EtherTypeHex = dec2hex(obj.ethertype,4);
                     obj.EthertypeOrLength = ['0x' EtherTypeHex];
-                     FrameID = sum(packetData(21:22).*[2^8, 2^0]);
-                    PNIO_FrameIDHex = dec2hex(packetData(21:22),2);
-                    obj.EtherTypeSpecificData.PNIO_FrameID = sscanf(PNIO_FrameIDHex','%c');
-                    obj.APDU = packetData(21:end);
-                    % Comparing FrameID
-                    obj.setFrameID(FrameID, obj.APDU);
-                elseif isequal(packetData(13:14),EtherTypeIP)
-                    
-                    % IPv4 packet
-                    IPLength = dec2hex(packetData(15));
-                    IPLength = hex2dec(IPLength(2))*4; % Obtaining octets length
-                    obj.EthertypeOrLength = '0x0800';
                     obj.APDU = packetData(15:end);
-                    obj.EtherTypeSpecificData.IP.srcIP = packetData(15+12:15+12+3);
-                    obj.EtherTypeSpecificData.IP.dstIP = packetData(15+16:15+16+3);
-                    obj.EtherTypeSpecificData.IP.protocol = packetData(15+9);
-                    obj.EtherTypeSpecificData.IP.headerLength = IPLength;
-                    
-                    switch obj.EtherTypeSpecificData.IP.protocol
-                        
-                        case 17
-                            % Reading UDP
-                            obj.EtherTypeSpecificData.IP.UDP.srcPort = sum(packetData(15+IPLength:15+IPLength+1).*[2^8,2^0]);
-                            obj.EtherTypeSpecificData.IP.UDP.dstPort = sum(packetData(15+IPLength+2:15+IPLength+3).*[2^8,2^0]);
-                            obj.EtherTypeSpecificData.IP.UDP.length = sum(packetData(15+IPLength+4:15+IPLength+5).*[2^8,2^0]);
-                            % Check if UDP has DCE/RPC protocol
-                            UDPdata = packetData(15+IPLength+8:end);
-                            RPCbyteOrder = UDPdata(5);
-                            
-                            if length(UDPdata) >= 80
-                                
-                                if RPCbyteOrder >= 16
-                                    % RPCbyteOrder = 0;
-                                    % little-endian byte order
-                                    RPCfragmentLength = UDPdata(80-4:-1:80-5);
-                                    RPCuuid =  {UDPdata(28:-1:25) UDPdata(30:-1:29) ...
-                                        UDPdata(32:-1:31) UDPdata(33:34) ...
-                                        UDPdata(35:40)};
-                                else
-                                    % RPCbyteOrder = 1;
-                                    % big-endian byte order
-                                    RPCfragmentLength = UDPdata(80-5:80-4);
-                                    RPCuuid    =  {UDPdata(25:28) UDPdata(29:30) ...
-                                        UDPdata(31:32) UDPdata(34:-1:33) ...
-                                        UDPdata(40:-1:35)};
+                    if isequal(packetData(13:14),EtherTypeARP)
+                        obj.packetDesc = 'ARP';
+                        obj.APDU = packetData(15:end);
+                    elseif isequal(packetData(13:14),EtherTypeLLDP)
+                        obj.packetDesc = 'LLDP';
+                    elseif isequal(packetData(13:14),EtherTypePROFINET)
+                        FrameID = sum(packetData(15:16).*[2^8, 2^0]);
+                        PNIO_FrameIDHex = dec2hex(packetData(15:16),2);
+                        obj.EtherTypeSpecificData.PNIO_FrameID = sscanf(PNIO_FrameIDHex','%c');
+                        obj.EtherTypeSpecificData.PNIO = [];
+                        obj.EtherTypeSpecificData.PNIO_CycleCounter = [];
+                        obj.EtherTypeSpecificData.PNIO_TransferStatus = [];
+                        obj.EtherTypeSpecificData.PNIO_UserData = [];
+                        obj.EtherTypeSpecificData.PNIO_DataStatus = [];
+                        obj.APDU = packetData(15:end);
+                        % Comparing FrameID
+                        obj.setFrameID(FrameID, obj.APDU);
+                    elseif isequal(packetData(13:14),EtherTypeMRP)
+                        obj.packetDesc = 'PN-MRP';
+                        obj.EtherTypeSpecificData.MRP.version = sum(packetData(15:16).*[2^8, 2^0]);
+                        obj.EtherTypeSpecificData.MRP.TLVHeader.Type = ['0x' dec2hex(packetData(17),2)];
+                        switch obj.EtherTypeSpecificData.MRP.TLVHeader.Type
+                            case '0x02'
+                                obj.EtherTypeSpecificData.MRP.TLVHeader.Type = ['MRP test (' obj.EtherTypeSpecificData.MRP.TLVHeader.Type ')'];
+                                obj.EtherTypeSpecificData.MRP.TLVHeader.Length =  packetData(18);
+                                obj.EtherTypeSpecificData.MRP.TLVHeader.Prio =  ['0x' dec2hex(sum(packetData(19:20).*[2^8, 2^0]),4)];
+                                obj.EtherTypeSpecificData.MRP.TLVHeader.SA = packetData(21:26);
+                                if sum(packetData(27:28).*[2^8, 2^0]) == 0
+                                    obj.EtherTypeSpecificData.MRP.TLVHeader.PortRole = 'Primary ring port (0x0000)';
+                                elseif sum(packetData(27:28).*[2^8, 2^0]) == 1
+                                    obj.EtherTypeSpecificData.MRP.TLVHeader.PortRole = 'secondary ring port (0x0001)';
                                 end
+                                if sum(packetData(29:30).*[2^8, 2^0]) == 0
+                                    obj.EtherTypeSpecificData.MRP.TLVHeader.RingState = 'Ring open (0x0000)';
+                                elseif sum(packetData(29:30).*[2^8, 2^0]) == 1
+                                    obj.EtherTypeSpecificData.MRP.TLVHeader.RingState = 'Ring closed (0x0001)';
+                                end
+                                obj.EtherTypeSpecificData.MRP.TLVHeader.Transition =  ['0x' dec2hex(sum(packetData(31:32).*[2^8, 2^0]),4)];
+                                obj.EtherTypeSpecificData.MRP.TLVHeader.Timestamp =  ['0x' dec2hex(sum(packetData(33:36).*[2^24,2^16,2^8, 2^0]),4)];
+                            case '0x03'
+                                obj.EtherTypeSpecificData.MRP.TLVHeader.Type = ['MRP TopologyChange (' obj.EtherTypeSpecificData.MRP.TLVHeader.Type ')'];
+                            case '0x04'
+                                obj.EtherTypeSpecificData.MRP.TLVHeader.Type = ['MRP LinkDown (' obj.EtherTypeSpecificData.MRP.TLVHeader.Type ')'];
+                            case '0x05'
+                                obj.EtherTypeSpecificData.MRP.TLVHeader.Type = ['MRP linkUp (' obj.EtherTypeSpecificData.MRP.TLVHeader.Type ')'];
+                                obj.EtherTypeSpecificData.MRP.TLVHeader.Length =  packetData(18);
+                                obj.EtherTypeSpecificData.MRP.TLVHeader.SA = packetData(19:24);
+                                if sum(packetData(25:26).*[2^8, 2^0]) == 0
+                                    obj.EtherTypeSpecificData.MRP.TLVHeader.PortRole = 'Primary ring port (0x0000)';
+                                elseif sum(packetData(25:26).*[2^8, 2^0]) == 1
+                                    obj.EtherTypeSpecificData.MRP.TLVHeader.PortRole = 'secondary ring port (0x0001)';
+                                end
+                                obj.EtherTypeSpecificData.MRP.TLVHeader.Interval =  sum(packetData(27:28).*[2^8, 2^0]);
                                 
-                                PNIO_RPCuuid = {'DEA00001-6C97-11D1-8271-00A02442DF7D',...
-                                    'DEA00002-6C97-11D1-8271-00A02442DF7D',...
-                                    'DEA00003-6C97-11D1-8271-00A02442DF7D',...
-                                    'DEA00004-6C97-11D1-8271-00A02442DF7D'};
-                                RPCfragmentLength = sum(RPCfragmentLength.*[2^8,2^0]);
+                                if sum(packetData(29:30).*[2^8, 2^0]) == 1
+                                    obj.EtherTypeSpecificData.MRP.TLVHeader.Blocked = ['0x' dec2hex(sum(packetData(29:30).*[2^8, 2^0]),4) ' The MRC is able to receive and forward frames to port in state blocked'];
+                                else
+                                    obj.EtherTypeSpecificData.MRP.TLVHeader.Blocked = ['0x' dec2hex(sum(packetData(29:30).*[2^8, 2^0]),4)];
+                                end
+                        end
+                    elseif isequal(packetData(13:14),EtherTypeCB)
+                        obj.addprop('CB_Redundancy_Tag');
+                        obj.CB_Redundancy_Tag.seq = sum(packetData(17:18).*[2^8, 2^0]);
+                        obj.CB_Redundancy_Tag.type = ['0x' dec2hex(sum(packetData(19:20).*[2^8, 2^0]))];
+                        obj.ethertype =sum(packetData(19:20).*[2^8, 2^0]);
+                        EtherTypeHex = dec2hex(obj.ethertype,4);
+                        obj.EthertypeOrLength = ['0x' EtherTypeHex];
+                        FrameID = sum(packetData(21:22).*[2^8, 2^0]);
+                        PNIO_FrameIDHex = dec2hex(packetData(21:22),2);
+                        obj.EtherTypeSpecificData.PNIO_FrameID = sscanf(PNIO_FrameIDHex','%c');
+                        obj.APDU = packetData(21:end);
+                        % Comparing FrameID
+                        obj.setFrameID(FrameID, obj.APDU);
+                    elseif isequal(packetData(13:14),EtherTypeIPv6)
+                        % IPv4 packet
+                        IPLength = dec2hex(packetData(15));
+                        IPLength = hex2dec(IPLength(2))*4; % Obtaining octets length
+                        obj.EthertypeOrLength = '0x86dd';
+                        obj.APDU = packetData(15:end);
+                        obj.EtherTypeSpecificData.IP.srcIP = packetData(15+8:15+8+15);
+                        obj.EtherTypeSpecificData.IP.dstIP = packetData(15+24:15+24+15);
+                        obj.EtherTypeSpecificData.IP.protocol = packetData(15+9);
+                        obj.EtherTypeSpecificData.IP.headerLength = IPLength;
+                        if packetData(21)== 58 | packetData(55)== 58
+                            obj.packetDesc = 'ICMPv6';
+                        elseif packetData(21) == 17 %UDP
+                            obj.packetDesc = 'UDP';
+                            obj.EtherTypeSpecificData.IP.UDP.srcPort = sum(packetData(55:55+1).*[2^8,2^0]);
+                            obj.EtherTypeSpecificData.IP.UDP.dstPort = sum(packetData(57:57+1).*[2^8,2^0]);
+                            obj.EtherTypeSpecificData.IP.UDP.length = sum(packetData(59:59+1).*[2^8,2^0]);
+                            if obj.EtherTypeSpecificData.IP.UDP.srcPort == 546 | obj.EtherTypeSpecificData.IP.UDP.dstPort == 547
+                                obj.packetDesc = 'UDP - DHCPv6';
+                            end
+                            % Check if UDP has DCE/RPC protocol
+                            UDPdata = packetData(63:end);
+                        end
+                        
+                    elseif isequal(packetData(13:14),EtherTypeIP)
+                        
+                        % IPv4 packet
+                        IPLength = dec2hex(packetData(15));
+                        IPLength = hex2dec(IPLength(2))*4; % Obtaining octets length
+                        obj.EthertypeOrLength = '0x0800';
+                        obj.APDU = packetData(15:end);
+                        obj.EtherTypeSpecificData.IP.srcIP = packetData(15+12:15+12+3);
+                        obj.EtherTypeSpecificData.IP.dstIP = packetData(15+16:15+16+3);
+                        obj.EtherTypeSpecificData.IP.protocol = packetData(15+9);
+                        obj.EtherTypeSpecificData.IP.headerLength = IPLength;
+                        
+                        switch obj.EtherTypeSpecificData.IP.protocol
+                            
+                            case 17
+                                % Reading UDP
+                                obj.packetDesc = 'UDP';
+                                obj.EtherTypeSpecificData.IP.UDP.srcPort = sum(packetData(15+IPLength:15+IPLength+1).*[2^8,2^0]);
+                                obj.EtherTypeSpecificData.IP.UDP.dstPort = sum(packetData(15+IPLength+2:15+IPLength+3).*[2^8,2^0]);
+                                obj.EtherTypeSpecificData.IP.UDP.length = sum(packetData(15+IPLength+4:15+IPLength+5).*[2^8,2^0]);
+                                if obj.EtherTypeSpecificData.IP.UDP.srcPort == 0x0089 | obj.EtherTypeSpecificData.IP.UDP.dstPort == 0x0089
+                                    obj.packetDesc = 'UDP - NBNS';
+                                end
+                                % Check if UDP has DCE/RPC protocol
+                                UDPdata = packetData(15+IPLength+8:end);
+                                RPCbyteOrder = UDPdata(5);
                                 
-                                if length(UDPdata) == 80 + RPCfragmentLength
-                                    % it is RPC protocol
-                                    % checking UUID refers to PN_IO
-                                    UUID = strjoin(cellfun(@(x) sprintf('%s',dec2hex(x,2)'),RPCuuid, 'UniformOutput', false),'-');
-                                    obj.EtherTypeSpecificData.IP.RPC.uuid = UUID;
-                                    obj.EtherTypeSpecificData.IP.RPC.Len = RPCfragmentLength;
+                                if length(UDPdata) >= 80
                                     
-                                    if any(strcmp(PNIO_RPCuuid,UUID))
-                                        % This is a PN-IO CM packet
-                                        obj.packetDesc = 'PN_IO CM';
+                                    if RPCbyteOrder >= 16
+                                        % RPCbyteOrder = 0;
+                                        % little-endian byte order
+                                        RPCfragmentLength = UDPdata(80-4:-1:80-5);
+                                        RPCuuid =  {UDPdata(28:-1:25) UDPdata(30:-1:29) ...
+                                            UDPdata(32:-1:31) UDPdata(33:34) ...
+                                            UDPdata(35:40)};
+                                    else
+                                        % RPCbyteOrder = 1;
+                                        % big-endian byte order
+                                        RPCfragmentLength = UDPdata(80-5:80-4);
+                                        RPCuuid    =  {UDPdata(25:28) UDPdata(29:30) ...
+                                            UDPdata(31:32) UDPdata(34:-1:33) ...
+                                            UDPdata(40:-1:35)};
                                     end
                                     
+                                    PNIO_RPCuuid = {'DEA00001-6C97-11D1-8271-00A02442DF7D',...
+                                        'DEA00002-6C97-11D1-8271-00A02442DF7D',...
+                                        'DEA00003-6C97-11D1-8271-00A02442DF7D',...
+                                        'DEA00004-6C97-11D1-8271-00A02442DF7D'};
+                                    RPCfragmentLength = sum(RPCfragmentLength.*[2^8,2^0]);
+                                    
+                                    if length(UDPdata) == 80 + RPCfragmentLength
+                                        % it is RPC protocol
+                                        % checking UUID refers to PN_IO
+                                        UUID = strjoin(cellfun(@(x) sprintf('%s',dec2hex(x,2)'),RPCuuid, 'UniformOutput', false),'-');
+                                        obj.EtherTypeSpecificData.IP.RPC.uuid = UUID;
+                                        obj.EtherTypeSpecificData.IP.RPC.Len = RPCfragmentLength;
+                                        
+                                        if any(strcmp(PNIO_RPCuuid,UUID))
+                                            % This is a PN-IO CM packet
+                                            obj.packetDesc = 'PN_IO CM';
+                                        end
+                                    end
                                 end
-                                
-                            end
-                            
-                        case 6
-                            %Reading TCP
-                            obj.EtherTypeSpecificData.IP.TCP.srcPort = sum(packetData(15+IPLength:15+IPLength+1).*[2^8,2^0]);
-                            obj.EtherTypeSpecificData.IP.TCP.dstPort = sum(packetData(15+IPLength+2:15+IPLength+3).*[2^8,2^0]);
-                            obj.EtherTypeSpecificData.IP.TCP.sequenceNumber = packetData(15+IPLength+4:15+IPLength+7);
-                            
-                        otherwise
-                            
+                            case 6
+                                %Reading TCP
+                                obj.packetDesc = 'TCP';
+                                obj.EtherTypeSpecificData.IP.TCP.srcPort = sum(packetData(15+IPLength:15+IPLength+1).*[2^8,2^0]);
+                                obj.EtherTypeSpecificData.IP.TCP.dstPort = sum(packetData(15+IPLength+2:15+IPLength+3).*[2^8,2^0]);
+                                obj.EtherTypeSpecificData.IP.TCP.sequenceNumber = packetData(15+IPLength+4:15+IPLength+7);
+                            case 2
+                                % Reading UDP
+                                obj.packetDesc = 'IGMPv3';
+                            otherwise
+                        end
                     end
                 end
             end
-       end
         end
         
         function [preemptableFragments,info] = getpreemptableFragments(obj)
@@ -1497,7 +1630,7 @@ classdef eth < handle & dynamicprops
             assembledPackets.continuations = eth.empty(1,0);
             
             for i=1:length(packets)
-                if contains(packets(i).frame.type,'Initial')                    
+                if contains(packets(i).frame.type,'Initial')
                     assembledPackets(preemptionID).initial = packets(i);
                     preemptionID = preemptionID +1;
                     continuationID = 1;
@@ -1514,7 +1647,7 @@ classdef eth < handle & dynamicprops
                             
                         else
                             continuationID =1;
-                            assembledPackets(preemptionID).continuations(continuationID) = packets(i);  
+                            assembledPackets(preemptionID).continuations(continuationID) = packets(i);
                             preemptionID = preemptionID +1;
                             preemtedPacketsCounter = preemtedPacketsCounter+1;
                         end
@@ -1522,7 +1655,7 @@ classdef eth < handle & dynamicprops
                         % check if continuation fragment belongs to the
                         % same packet as the fragment before
                         if preemptionID >1 && ~isempty(assembledPackets(preemptionID-1).continuations)
-                             previousFragment = assembledPackets(preemptionID-1).continuations(continuationID);
+                            previousFragment = assembledPackets(preemptionID-1).continuations(continuationID);
                         else
                             previousFragment = [];
                         end
@@ -1533,7 +1666,7 @@ classdef eth < handle & dynamicprops
                         else
                             continuationID =1;
                             assembledPackets(preemptionID).continuations(continuationID) = packets(i);
-                            preemptionID = preemptionID +1; 
+                            preemptionID = preemptionID +1;
                         end
                     end
                 end
@@ -1543,12 +1676,12 @@ classdef eth < handle & dynamicprops
         end
         
         function delayCorrection(obj,correctionTime)
-           for i= 1:length(obj)
-               if isempty(obj(i).correctionTime)
-                obj(i).time = obj(i).time - correctionTime;
-                obj(i).correctionTime = correctionTime;
-               end
-           end
+            for i= 1:length(obj)
+                if isempty(obj(i).correctionTime)
+                    obj(i).time = obj(i).time - correctionTime;
+                    obj(i).correctionTime = correctionTime;
+                end
+            end
         end
         
         function copyPhysicalSignal(obj,objScope,chNr)
@@ -1567,10 +1700,10 @@ classdef eth < handle & dynamicprops
             else
                 packetPortIDs = ismember(arrayfun(@(S) S.netANALYZER.Reception_Port,packetPortIDs) ,receptionPort);
             end
-            packetsPort = obj(packetPortIDs);            
+            packetsPort = obj(packetPortIDs);
             remainingPackets = obj(~packetPortIDs);
         end
-
+        
         function packetLen = get.packetLen(obj)
             IPGlength = 12;
             packetLen = [ obj.packetLen] + IPGlength;
@@ -1582,8 +1715,14 @@ classdef eth < handle & dynamicprops
         end
         
         function specificPackets = getSpecificPackets(obj, etherType)
-            if isempty(obj)            
-                specificPackets = obj(ismember({obj.EthertypeOrLength} ,etherType));
+            if ~isempty(obj)
+                if ~isa({obj.EthertypeOrLength},'cell')
+                    disp('test');
+                end
+                
+                isMemberOfEtherType = ismember({obj.EthertypeOrLength} ,etherType);
+                
+                specificPackets = obj(isMemberOfEtherType);
             else
                 specificPackets = [];
             end
@@ -1602,26 +1741,26 @@ classdef eth < handle & dynamicprops
         end
         
         function cycleCounter = findEqualPackets(obj,direction,packets)
-            cycleCounter = eth.empty(1,0); 
-          
+            cycleCounter = eth.empty(1,0);
+            
             if strcmp(packets(1, 1).EthertypeOrLength, '0x8892') && ~isempty(packets(1, 1).EtherTypeSpecificData.PNIO) && packets(1, 1).EtherTypeSpecificData.PNIO
                 tempObj = [obj.EtherTypeSpecificData];
                 objETspecData.cycleCounter = [tempObj.PNIO_CycleCounter];
                 objETspecData.userData = [tempObj.PNIO_UserData];
                 objETspecData.time = [obj.time];
                 clear tempObj
-
+                
                 tempPacket = [packets.EtherTypeSpecificData];
                 packetsETspecData.cycleCounter = [tempPacket.PNIO_CycleCounter];
                 packetsETspecData.userData = [tempPacket.PNIO_UserData];
                 packetsETspecData.time = [packets.time];
                 clear tempPacket
-
-
-
-    %             identicalPacketID = cell2mat(arrayfun(@(X) find(X.cycleCounter==[packetsETspecData.cycleCounter]) ,objETspecData ,'UniformOutput' ,false));
-    %             abs(packetsETspecData.time(identicalPacketID) - objETspecData.time) <2 &  abs(packetsETspecData.time(identicalPacketID) - objETspecData.time) >0;
-
+                
+                
+                
+                %             identicalPacketID = cell2mat(arrayfun(@(X) find(X.cycleCounter==[packetsETspecData.cycleCounter]) ,objETspecData ,'UniformOutput' ,false));
+                %             abs(packetsETspecData.time(identicalPacketID) - objETspecData.time) <2 &  abs(packetsETspecData.time(identicalPacketID) - objETspecData.time) >0;
+                
                 packetNr = 1;
                 for i = 1:length(obj)
                     if  ~isempty(obj(i).EtherTypeSpecificData.PNIO_CycleCounter) && ~isempty(packetsETspecData.cycleCounter)
@@ -1631,18 +1770,18 @@ classdef eth < handle & dynamicprops
                                 if timeDiff <2 && timeDiff >=0
                                     cycleCounter(packetNr,1:2) = [obj(i) packets(j)];
                                     packetNr = packetNr+1;
-        %                             cycleCounter{i,2} = );
+                                    %                             cycleCounter{i,2} = );
                                     break
                                 end
                             end
                         end
-                          if contains(direction ,'receive')
+                        if contains(direction ,'receive')
                             for j = find(obj(i).EtherTypeSpecificData.PNIO_CycleCounter == [packetsETspecData.cycleCounter] & ([packetsETspecData.time] -obj(i).time < 0) )
                                 timeDiff = abs([packets(j).time] -obj(i).time);
                                 if timeDiff <2 && timeDiff >=0
                                     cycleCounter(packetNr,1:2) = [obj(i) packets(j)];
                                     packetNr = packetNr+1;
-        %                             cycleCounter{i,2} = );
+                                    %                             cycleCounter{i,2} = );
                                     break
                                 end
                             end
@@ -1655,25 +1794,25 @@ classdef eth < handle & dynamicprops
             else
                 cycleCounter = [];
             end
-
+            
         end
         
         function packets = getPacketsOfDevice(obj,mac)
             if ~isempty(obj)
-            ids = ismember(cell2mat({obj.srcMac}'),mac,'rows') | ismember(cell2mat({obj.dstMac}'),mac,'rows');
-            packets = obj(ids);
+                ids = ismember(cell2mat({obj.srcMac}'),mac,'rows') | ismember(cell2mat({obj.dstMac}'),mac,'rows');
+                packets = obj(ids);
             else
-               packets =[]; 
+                packets =[];
             end
         end
-      
-        function jitter = calculateJitter(obj)            
-            time = [obj.time];     
+        
+        function jitter = calculateJitter(obj)
+            time = [obj.time];
             jitter.value =  (time(2:end) -time(1:end-1));
             updateTime = mean(rmoutliers(round(jitter.value/(31.25e-6))*31.25e-6));
             jitter.value = [nan (( jitter.value- updateTime))];% /updateTime)*100];
             jitter.mean = mean(jitter.value,'omitnan');
-            jitter.max = max(jitter.value);             
+            jitter.max = max(jitter.value);
         end
     end
     
