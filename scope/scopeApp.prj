@@ -1,5 +1,5 @@
 <deployment-project plugin="plugin.apptool" plugin-version="1.0">
-  <configuration build-checksum="1711686706" file="F:\Documents\Libraries\MATLAB\matlab-libraries\scope\scopeApp.prj" location="F:\Documents\Libraries\MATLAB\matlab-libraries\scope" name="scopeApp" target="target.mlapps" target-name="Package App">
+  <configuration build-checksum="1630028335" file="F:\Documents\Libraries\MATLAB\matlab-libraries\scope\scopeApp.prj" location="F:\Documents\Libraries\MATLAB\matlab-libraries\scope" name="scopeApp" target="target.mlapps" target-name="Package App">
     <param.appname>scopeApp</param.appname>
     <param.authnamewatermark>Dimitri De Schuyter</param.authnamewatermark>
     <param.email />
@@ -7,7 +7,8 @@
     <param.icon />
     <param.icons />
     <param.summary />
-    <param.description>multi import and ethernet table
+    <param.description>bin size in pcap quick analysis
+multi import and ethernet table
 Better view
 Added plotting Channels and FFT time period and FFT window type 
 Fixed remaining tilte input fields
@@ -22,7 +23,7 @@ Added FFT
 Added  pn plotting function
 Fix multiple channel profinet decoding
 Fix compatibillity for multiple platforms</param.description>
-    <param.screenshot>C:\Users\Dimitri De Schuyter\AppData\Local\Temp\tpa477a0ef_0d76_46a7_a1cd_42410d9af741.png</param.screenshot>
+    <param.screenshot>C:\Users\Dimitri De Schuyter\AppData\Local\Temp\tpafa844f9_981a_4baf_836f_f39ffed945d2.png</param.screenshot>
     <param.version>1.4</param.version>
     <param.products.name />
     <param.products.id />
@@ -78,7 +79,7 @@ Fix compatibillity for multiple platforms</param.description>
     </build-deliverables>
     <workflow />
     <matlab>
-      <root>C:\MATLAB\R2021a</root>
+      <root>C:\MATLAB\R2022a</root>
       <toolboxes>
         <toolbox name="matlabcoder" />
         <toolbox name="embeddedcoder" />
