@@ -48,7 +48,7 @@ classdef channel < dynamicprops & matlab.mixin.Copyable
             recordEnd = gatePosition+gateDuration/2;
             periodExtracted = zeros(1,length(scopeObj.time));
             t1 = find(scopeObj.time>=recordStart,1,'first');
-            t2= find(scopeObj.time>=recordEnd,1,'first');
+            t2= find(scopeObj.time>=(recordEnd-1e-16),1,'first');
             periodExtracted(t1:t2) = 1;
             if exist('verbose','var') && verbose
                 figure
