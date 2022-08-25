@@ -1425,8 +1425,8 @@ classdef eth < handle & dynamicprops
                 
                 obj.ethertype = sum(packetData(13:14).*[2^8, 2^0]);
                 if obj.ethertype <= 1500
-                    obj.EthertypeOrLength = sum(packetData(13:14).*[2^8, 2^0]);
-                    obj.APDU = packetData(15:end);
+                    obj.EthertypeOrLength = '0x0000';
+                    obj.APDU = packetData(13:end);
                 else
                     EtherTypeHex = dec2hex(obj.ethertype,4);
                     obj.EthertypeOrLength = ['0x' EtherTypeHex];
