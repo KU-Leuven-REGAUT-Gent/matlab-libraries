@@ -6,8 +6,11 @@ classdef pcapMeasurement
     
     methods
         function obj = pcapMeasurement(file)
-            %UNTITLED Construct an instance of this class
-            %   Detailed explanation goes here
+            % reads the pcap file and creates a pcapMeasurement object that
+            % stores the filename and creates a port property that contains
+            % an array that corresponds with the interface ids that are
+            % inside the pcap. All packets of the specific interface id
+            % will be stored in to the corresponding port.
             LastFolderIndex = find(file=='\',1,'last')+1;
             obj.fileName = cell2mat(extractBetween(file,LastFolderIndex,'.pcap'));
             obj.port = eth.pcapread(file,0);
@@ -15,6 +18,14 @@ classdef pcapMeasurement
         end
         
         function [fig, table] = table(obj, fig)
+            % generates a table of all packets in obj.ports.
+            % Implemented protocols:
+            % -  RT class 2
+            % -  Alarm Low
+            % -  Alarm High
+            % -  MRP
+            % -  preempted
+
             if(~exist('fig','var'));fig = uifigure('Position',[300 100 1200 800]);end; 
             % create the data
             
@@ -22,7 +33,7 @@ classdef pcapMeasurement
             colorgen = @(text,color) ['<html><div style="color:rgb(',num2str(color(1)),',',num2str(color(2)),',',num2str(color(3)),');">',text,'</div></html>'];
             bgcolorgen = @(text,color,bgcolor) ['<html><div style="width:200px;height:15px;padding:2px;color:rgb(',num2str(color(1)),',',num2str(color(2)),',',num2str(color(3)),');background-color:rgb(',num2str(bgcolor(1)),',',num2str(bgcolor(2)),',',num2str(bgcolor(3)),');">',text,'</div></html>'];
             
-          
+            % get information of all packets in the port variable
             i=1;
             for portID=1:length(obj.port)
                 for packetID = 1:length(obj.port(portID).packet)                    
@@ -52,12 +63,15 @@ classdef pcapMeasurement
             mrpStyle = uistyle('BackgroundColor',[0.4940 0.1840 0.5560]);
             preemptionStyle = uistyle('BackgroundColor',[0.3010 0.7450 0.9330]);
             
+            % Find corresponding protocol packets
             pnPacketsID =find(contains(d(:,5),'RT class 2'));
             alarmLowPacketsID =find(contains(d(:,5),'Alarm Low'));
             alarmHighPacketsID =find(contains(d(:,5),'Alarm High'));
             mrpPacketsID = find(contains(d(:,5),'MRP'));
             preemptionID = find(contains(d(:,6),'preempt'));
             
+            % Adjust the style of each row to the corresponding protocol
+            % style
             addStyle(tble,pnStyle,'row', pnPacketsID);
             addStyle(tble,alarmLowStyle,'row', alarmLowPacketsID);
             addStyle(tble,alarmHighStyle,'row', alarmHighPacketsID);

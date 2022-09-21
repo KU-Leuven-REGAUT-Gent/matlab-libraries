@@ -142,6 +142,7 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
         function obj = scope(model)
             obj.model = model;
         end
+
         function result = values(obj,str)
             for i=1:numel(obj.channels)
                 if(strcmp(str,obj.channels{i}.name))
@@ -830,26 +831,23 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
             end
             sizeRowVarargin = cellfun(@(c) size( c,1), varargin, 'UniformOutput', false);
             appIndex= find(cellfun(@(x)~isempty(strfind("app",x)), varargin( [sizeRowVarargin{:}]==1)));
-            % Check whether file is a folder.
-            if (isa(file, 'char' ) && exist(file, 'dir') )
-                folder = file;
-                % Get a list of all files that have the extension '.isf' or '.ISF'.
-                files = [ dir(fullfile(folder, '*.isf')) ];
-            elseif  isempty(appIndex) || appIndex==0
+
+            obj = scope('Unknown (ISF)');
+            obj.firmware_version = 'Unknown (ISF)';
+         
+            if  isempty(appIndex) || appIndex==0
                 % The pattern is not a folder, so must be a file name or a pattern with
                 % wildcards (such as 'Traces/TEK0*.ISF').
-                [folder, ~, ~] = fileparts(file);
+                [folder, fileName, ~] = fileparts(file);
                 % Get a list of all files and folders which match the pattern...
-                filesAndFolders = dir(file);
+                filesAndFolders = dir(fullfile(folder, '*.isf'));
                 % ...then exclude the folders, to get just a list of files.
                 files = filesAndFolders(~[filesAndFolders.isdir]);
-            end
-            if (isempty(appIndex) || appIndex==0)
+               files = files(cellfun(@(x) contains(x,fileName),{files.name}));
                 fileNames = {files.name};
                 datetimes = datestr([files.datenum]);
             end
-            obj = scope('Unknown (ISF)');
-            obj.firmware_version = 'Unknown (ISF)';
+
             if appIndex>0
                 folder = varargin{appIndex +1};                
                 
@@ -872,16 +870,18 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
                     mthNames = fileNames(~cellfun('isempty',(regexp(fileNames,'tek[0-9]*MTH'))));
                     obj.fileName = fName{1};
                 else
-                    warning('Returning empty scope object')
-                    return;
+                    fName = extractBefore(fileNames(1),regexpi(fileNames{1},'CH'));
+                    chNames = fileNames(~cellfun('isempty',(regexp(fileNames,'tek[0-9]*CH'))));
+                    mthNames = fileNames(~cellfun('isempty',(regexp(fileNames,'tek[0-9]*MTH'))))  ; 
+                    obj.fileName = fName{1};
                 end
             elseif numel(fileNames) ==1
                 fName = extractBefore(fileNames,'CH');
                 if isempty(fName)
                    fName = extractBefore(fileNames,'MTH'); 
                 end
-                chNames = fileNames(~cellfun('isempty',(regexp(fileNames,'tek[0-9]*CH'))))
-                mthNames = fileNames(~cellfun('isempty',(regexp(fileNames,'tek[0-9]*MTH'))))
+                chNames = fileNames(~cellfun('isempty',(regexp(fileNames,'tek[0-9]*CH'))));
+                mthNames = fileNames(~cellfun('isempty',(regexp(fileNames,'tek[0-9]*MTH'))));
                 obj.fileName = fName{1};
                 
             end
@@ -1060,31 +1060,29 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
             end
             sizeRowVarargin = cellfun(@(c) size( c,1), varargin, 'UniformOutput', false);
             appIndex= find(cellfun(@(x)~isempty(strfind("app",x)), varargin( [sizeRowVarargin{:}]==1)));
-            % Check whether file is a folder.
-            if(isa(file, 'char' ) && exist(file, 'dir') )
-                folder = file;
-                % Get a list of all files that have the extension '.wfm' or '.WFM'.
-                files = [ dir(fullfile(folder, '*.wfm')) ];
-                
-            elseif appIndex==0
+
+            
+            obj = scope('Unknown (WFM)');
+            obj.firmware_version = 'Unknown (WFM)';
+
+            if isempty(appIndex) || appIndex==0
                 % The pattern is not a folder, so must be a file name or a pattern with
                 % wildcards (such as 'Traces/TEK0*.ISF').
-                [folder, ~, ~] = fileparts(file);
+                 % The pattern is not a folder, so must be a file name or a pattern with
+                % wildcards (such as 'Traces/TEK0*.ISF').
+                [folder, fileName, ~] = fileparts(file);
                 % Get a list of all files and folders which match the pattern...
-                filesAndFolders = dir(file);
+                filesAndFolders = dir(fullfile(folder, '*.wfm'));
                 % ...then exclude the folders, to get just a list of files.
                 files = filesAndFolders(~[filesAndFolders.isdir]);
-            end
-            if isempty(appIndex) || appIndex==0
+               files = files(cellfun(@(x) contains(x,fileName),{files.name}));
                 fileNames = {files.name};
                 datetimes = datestr([files.datenum]);
             end
-            obj = scope('Unknown (WFM)');
-            obj.firmware_version = 'Unknown (WFM)';
+         
             
             if appIndex>0
-                folder = varargin{appIndex +1};
-                
+                folder = varargin{appIndex +1};                
                 
                 chNames = file(~cellfun('isempty',(regexpi(file,'CH'))));
                 mthNames = file(~cellfun('isempty',(regexpi(file,'Math'))));
@@ -1092,19 +1090,29 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
                 obj.fileName = extractBefore(lower(file{1}),'_ch');
             elseif numel(fileNames)==0
                 error('The pattern did not match any file or files: %s', file);
-            elseif numel(fileNames) >1 &&  contains(input('Extract one measurement: ','s'),["y","Y","yes","j","ja"])
-                fileInDir(:,2) = fileNames';
-                fileInDir(:,1)= num2cell(1:numel(fileNames))';
-                table(fileInDir)
-                fileNr =input('Measurement ID: ');
-                fName = extractBefore(fileInDir(fileNr,2),'_Ch');
-                fileIDs=~cellfun('isempty',regexp(fileNames,fName));
-                fileNames= fileNames(fileIDs);
-                
-                chNames = fileNames(~cellfun('isempty',(regexpi(fileNames,'CH'))));
+            elseif numel(fileNames) ==1
+                chNames = fileNames(~cellfun('isempty',(regexpi(fileNames,'Ch'))));
                 mthNames = fileNames(~cellfun('isempty',(regexpi(fileNames,'MaTH'))));
-                
-                obj.fileName = fName{1};
+                obj.fileName = extractBefore(fileNames{1},regexpi(fileNames{1},'_Ch'));
+            elseif numel(fileNames) >1
+                if contains(input('Extract one measurement: ','s'),["y","Y","yes","j","ja"])
+                    fileInDir(:,2) = fileNames';
+                    fileInDir(:,1)= num2cell(1:numel(fileNames))';
+                    table(fileInDir)
+                    fileNr =input('Measurement ID: ');
+                    fName = extractBefore(fileInDir(fileNr,2),'_Ch');
+                    fileIDs=~cellfun('isempty',regexp(fileNames,fName));
+                    fileNames= fileNames(fileIDs);
+                    
+                    chNames = fileNames(~cellfun('isempty',(regexpi(fileNames,'CH'))));
+                    mthNames = fileNames(~cellfun('isempty',(regexpi(fileNames,'MaTH'))));
+                    
+                    obj.fileName = fName{1};
+                else
+                    chNames = fileNames(~cellfun('isempty',(regexpi(fileNames,'Ch'))));
+                    mthNames = fileNames(~cellfun('isempty',(regexpi(fileNames,'MaTH'))));
+                    obj.fileName = extractBefore(fileNames{1},regexpi(fileNames{1},'_Ch'));
+                end
             end
             
             obj.channels = channel.empty(numel(chNames),0);

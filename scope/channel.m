@@ -239,6 +239,10 @@ classdef channel < dynamicprops & matlab.mixin.Copyable
                             case 'A'
                                 yText = ["Current [" + obj.vertical_unit  + "]"] ;
                         end
+                        if isempty(time)
+                            time = 1:length(obj.value);
+                        end
+
                         if ~isempty(xLimits)
 
                             startID = find(time >= xLimits(1),1,'first');
@@ -256,7 +260,7 @@ classdef channel < dynamicprops & matlab.mixin.Copyable
                         
                         ylabel(yText)
                         
-                        if title ~= ""
+                        if ~isempty(title) &&  title ~= ""
                             
                             titlePlot  = obj.name + " - " +  title;
                         else
@@ -329,6 +333,9 @@ classdef channel < dynamicprops & matlab.mixin.Copyable
             end
             if(~exist('titles','var'))
                 titles = [];
+            end
+            if(~exist('time','var'))
+                time = [];
             end
             if(~exist('xLimits','var'));xLimits= [];end
         end
