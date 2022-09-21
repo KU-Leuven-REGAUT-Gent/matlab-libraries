@@ -1,5 +1,5 @@
 <deployment-project plugin="plugin.apptool" plugin-version="1.0">
-  <configuration build-checksum="3350297084" file="F:\Documents\Libraries\MATLAB\matlab-libraries- KUL\scope\scopeApp.prj" location="F:\Documents\Libraries\MATLAB\matlab-libraries- KUL\scope" name="scopeApp" target="target.mlapps" target-name="Package App">
+  <configuration build-checksum="3161763824" file="F:\Documents\Libraries\MATLAB\matlab-libraries- KUL\scope\scopeApp.prj" location="F:\Documents\Libraries\MATLAB\matlab-libraries- KUL\scope" name="scopeApp" target="target.mlapps" target-name="Package App">
     <param.appname>scopeApp</param.appname>
     <param.authnamewatermark>Dimitri De Schuyter</param.authnamewatermark>
     <param.email />
@@ -23,7 +23,7 @@ Added FFT
 Added  pn plotting function
 Fix multiple channel profinet decoding
 Fix compatibillity for multiple platforms</param.description>
-    <param.screenshot>C:\Users\Dimitri De Schuyter\AppData\Local\Temp\tp9e2845d9_7875_46c4_abeb_fc6d806a10c3.png</param.screenshot>
+    <param.screenshot>C:\Users\Dimitri De Schuyter\AppData\Local\Temp\tp38b506f2_5c68_4fb6_865d_52aca7aef316.png</param.screenshot>
     <param.version>1.4</param.version>
     <param.products.name />
     <param.products.id />
