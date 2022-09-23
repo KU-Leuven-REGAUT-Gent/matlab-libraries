@@ -825,6 +825,13 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
         end
         
         function obj = isfread(file, verbose,varargin)
+            % Reads isf files of a Linux based Tektronix scope. The file
+            % argument can be a part of the name to get all the channels of
+            % that measurement or with CHx or Math to get a specific
+            % channel.  In the case of the scope app an extra argument
+            % "app" is passed to get all the measurements with the given
+            % file name.
+
             if(~exist('verbose','var'));verbose=-1;warn('All underlying functions are executed in verbose mode');end;
             if ~exist('file', 'var')
                 error('No file name, directory or pattern was specified.');
@@ -835,22 +842,24 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
             obj = scope('Unknown (ISF)');
             obj.firmware_version = 'Unknown (ISF)';
          
+            % When executed with command window or scripts
             if  isempty(appIndex) || appIndex==0
                 % The pattern is not a folder, so must be a file name or a pattern with
                 % wildcards (such as 'Traces/TEK0*.ISF').
                 [folder, fileName, ~] = fileparts(file);
-                % Get a list of all files and folders which match the pattern...
+                % Get a list of all isf files and folders which match the pattern...
                 filesAndFolders = dir(fullfile(folder, '*.isf'));
-                % ...then exclude the folders, to get just a list of files.
+                % ...then exclude the folders, to get just a list of isf measurement files.
                 files = filesAndFolders(~[filesAndFolders.isdir]);
-               files = files(cellfun(@(x) contains(x,fileName),{files.name}));
+                files = files(cellfun(@(x) contains(x,fileName),{files.name}));
                 fileNames = {files.name};
                 datetimes = datestr([files.datenum]);
             end
 
             if appIndex>0
                 folder = varargin{appIndex +1};                
-                
+                % get the seperated channels and math filenames that
+                % contains the string in file.
                 chNames = file(~cellfun('isempty',(regexpi(file,'CH'))));
                 mthNames = file(~cellfun('isempty',(regexpi(file,'MTH'))));
                 
@@ -869,13 +878,13 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
                     chNames = fileNames(~cellfun('isempty',(regexp(fileNames,'tek[0-9]*CH'))));
                     mthNames = fileNames(~cellfun('isempty',(regexp(fileNames,'tek[0-9]*MTH'))));
                     obj.fileName = fName{1};
-                else
+                else % get all files with the same name
                     fName = extractBefore(fileNames(1),regexpi(fileNames{1},'CH'));
                     chNames = fileNames(~cellfun('isempty',(regexp(fileNames,'tek[0-9]*CH'))));
                     mthNames = fileNames(~cellfun('isempty',(regexp(fileNames,'tek[0-9]*MTH'))))  ; 
                     obj.fileName = fName{1};
                 end
-            elseif numel(fileNames) ==1
+            elseif numel(fileNames) ==1 % gets one file
                 fName = extractBefore(fileNames,'CH');
                 if isempty(fName)
                    fName = extractBefore(fileNames,'MTH'); 
@@ -1054,6 +1063,13 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
         end
         
         function obj = wfmread(file, verbose,varargin)
+            % Reads wfm files of a windows based Tektronix scope. The file
+            % argument can be a part of the name to get all the channels of
+            % that measurement or with CHx or Math to get a specific
+            % channel.  In the case of the scope app an extra argument
+            % "app" is passed to get all the measurements with the given
+            % file name.
+
             if(~exist('verbose','var'));verbose=-1;warn('All underlying functions are executed in verbose mode');end;
             if ~exist('file', 'var')
                 error('No file name, directory or pattern was specified.');
