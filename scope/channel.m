@@ -41,6 +41,16 @@ classdef channel < dynamicprops & matlab.mixin.Copyable
 %            scopeTemp = scopeTemp.copy(s);
             obj.pn = eth.scoperead(scopeTemp,i,verbose);
         end
+
+        function obj = decodeChannelPB(obj,s,i,verbose)
+            if   ~isprop(obj,'pb')
+                obj.addprop('pb');
+            end
+            obj.pb = uart.empty(1,0);
+           scopeTemp =  copy(s);
+%            scopeTemp = scopeTemp.copy(s);
+            obj.pb = uart.decode(scopeTemp,i,1500000,verbose);
+        end
         
         function [freq_axis, fft_result,N] = advancedFFT(obj,scopeObj,scale,window,gatePosition,gateDuration,verbose)
             

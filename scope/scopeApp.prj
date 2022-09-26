@@ -1,5 +1,5 @@
 <deployment-project plugin="plugin.apptool" plugin-version="1.0">
-  <configuration build-checksum="337996604" file="F:\Documents\Libraries\MATLAB\matlab-libraries- KUL\scope\scopeApp.prj" location="F:\Documents\Libraries\MATLAB\matlab-libraries- KUL\scope" name="scopeApp" target="target.mlapps" target-name="Package App">
+  <configuration build-checksum="2913232803" file="F:\Documents\Libraries\MATLAB\matlab-libraries- KUL\scope\scopeApp.prj" location="F:\Documents\Libraries\MATLAB\matlab-libraries- KUL\scope" name="scopeApp" target="target.mlapps" target-name="Package App">
     <param.appname>scopeApp</param.appname>
     <param.authnamewatermark>Dimitri De Schuyter</param.authnamewatermark>
     <param.email />
@@ -7,7 +7,8 @@
     <param.icon />
     <param.icons />
     <param.summary />
-    <param.description>bin size in pcap quick analysis
+    <param.description>added PROFIBUS decoding
+bin size in pcap quick analysis
 multi import and ethernet table
 Better view
 Added plotting Channels and FFT time period and FFT window type 
@@ -23,7 +24,7 @@ Added FFT
 Added  pn plotting function
 Fix multiple channel profinet decoding
 Fix compatibillity for multiple platforms</param.description>
-    <param.screenshot>C:\Users\Dimitri De Schuyter\AppData\Local\Temp\tp73e3194f_1a68_4801_8272_d715214d95b6.png</param.screenshot>
+    <param.screenshot>C:\Users\Dimitri De Schuyter\AppData\Local\Temp\tpe9f0ade9_d186_457b_96d7_8a7f967a9a62.png</param.screenshot>
     <param.version>1.4</param.version>
     <param.products.name />
     <param.products.id />
@@ -60,6 +61,7 @@ Fix compatibillity for multiple platforms</param.description>
       <file>${PROJECT_ROOT}\logo.jpg</file>
       <file>${PROJECT_ROOT}\scope.m</file>
       <file>${PROJECT_ROOT}\wfm2read.m</file>
+      <file>F:\Documents\Libraries\MATLAB\matlab-libraries- KUL\uart.m</file>
       <file>F:\Documents\Libraries\MATLAB\matlab-libraries- KUL\warn.m</file>
       <file>F:\Documents\Libraries\MATLAB\networkAnalyzer\AR.m</file>
       <file>F:\Documents\Libraries\MATLAB\networkAnalyzer\CR.m</file>

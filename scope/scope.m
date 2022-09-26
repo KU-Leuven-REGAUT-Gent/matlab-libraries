@@ -509,6 +509,19 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
                 end
             end
         end
+
+        function obj = decodePB(obj,channels)
+               verbose =0;
+            % decode the signals in the same order as the ch array.
+            for i =1:numel(channels)
+                for j=1: length(obj.channels)
+                    if contains(obj.channels(j).name,string(channels(i)))
+                        %              obj.pn.(obj.channels(j).name)  = eth.scoperead(obj,j,verbose);
+                        obj.channels(j) = obj.channels(j).decodeChannelPB(obj,j,verbose);
+                    end
+                end
+            end
+        end
         
         function [obj1,obj2] = split(obj,channels1,channels2)
             obj1 = obj;
@@ -689,6 +702,7 @@ classdef scope < dynamicprops & matlab.mixin.Copyable
             if(isnumeric(channel))
                 Y = obj.channels(channel).value;
             else
+                channel = num2str(extractAfter(lower(channel),'ch'));
                 Y = obj.channels(channel).value;
             end
             
